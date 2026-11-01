@@ -2,10 +2,37 @@
 <html lang="es">
 <head>
     <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>PeliSeries</title>
+    <!-- Inyectamos Tailwind CSS -->
+    <script src="https://cdn.tailwindcss.com"></script>
 </head>
-<body>
-    <h1>Prueba de conexión a TMDB</h1>
+<body class="bg-gray-900 text-white min-h-screen p-6">
+    <div class="max-w-5xl mx-auto">
+        
+        <!-- Cabecera -->
+        <header class="mb-10 text-center mt-8">
+            <h1 class="text-5xl font-bold text-indigo-500 mb-4">PeliSeries</h1>
+            <p class="text-gray-400 text-lg">Busca y gestiona tus películas y series favoritas</p>
+        </header>
+
+        <!-- Buscador -->
+        <div class="flex gap-3 mb-10 max-w-2xl mx-auto">
+            <input type="text" id="searchInput" placeholder="Ej. El Señor de los Anillos, Breaking Bad..." 
+                class="w-full p-4 rounded-xl bg-gray-800 border border-gray-700 focus:outline-none focus:border-indigo-500 text-white text-lg shadow-inner">
+            <button id="searchBtn" 
+                class="bg-indigo-600 hover:bg-indigo-500 px-8 py-4 rounded-xl font-bold text-lg transition-colors shadow-lg">
+                Buscar
+            </button>
+        </div>
+
+        <!-- Contenedor donde JS inyectará las tarjetas -->
+        <div id="resultsGrid" class="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5 gap-6">
+            <!-- Las tarjetas aparecerán aquí -->
+        </div>
+        
+    </div>
+
     <script src="app.js"></script>
 </body>
 </html>
