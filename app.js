@@ -3,11 +3,11 @@ const TMDB_TOKEN = 'eyJhbGciOiJIUzI1NiJ9.eyJhdWQiOiJmNTIyNzVlMDVhNTAxMjllZWYwMGR
 const SUPABASE_URL = 'https://dqqfoucxbsvfdshruygt.supabase.co';
 const SUPABASE_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImRxcWZvdWN4YnN2ZmRzaHJ1eWd0Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3OTM1NDgyOTQsImV4cCI6MjEwOTEyNDI5NH0.Z4yVjtuuSrs3Pc5AghHFVeENOvmIeA8k34iWcVQiqIQ';
 
-// 2. INICIALIZAR SUPABASE
-const supabase = window.supabase.createClient(SUPABASE_URL, SUPABASE_KEY);
+// 2. INICIALIZAR SUPABASE (Cambiamos el nombre para evitar el error)
+const clienteSupabase = window.supabase.createClient(SUPABASE_URL, SUPABASE_KEY);
 
 // 3. VARIABLES GLOBALES Y DOM
-let pelisYSeries = []; // Guardaremos aquí la última búsqueda
+let pelisYSeries = []; 
 let usuarioActual = null;
 
 const searchInput = document.getElementById('searchInput');
@@ -24,7 +24,8 @@ async function iniciarSesion() {
     const email = emailInput.value;
     const password = passInput.value;
     
-    const { data, error } = await supabase.auth.signInWithPassword({ email, password });
+    // Usamos clienteSupabase en lugar de supabase
+    const { data, error } = await clienteSupabase.auth.signInWithPassword({ email, password });
     
     if (error) {
         alert("Error al iniciar sesión: " + error.message);
@@ -35,9 +36,8 @@ async function iniciarSesion() {
     }
 }
 
-// Comprobar si ya estábamos logueados al recargar la página
 async function comprobarSesion() {
-    const { data: { session } } = await supabase.auth.getSession();
+    const { data: { session } } = await clienteSupabase.auth.getSession();
     if (session) {
         usuarioActual = session.user;
         loginForm.classList.add('hidden');
@@ -45,7 +45,7 @@ async function comprobarSesion() {
     }
 }
 loginBtn.addEventListener('click', iniciarSesion);
-comprobarSesion(); // Se ejecuta al abrir la web
+comprobarSesion(); 
 
 
 // --- LÓGICA DE BÚSQUEDA TMDB ---
@@ -101,7 +101,7 @@ async function ejecutarBusqueda() {
     const query = searchInput.value.trim();
     if (query.length > 0) {
         resultsGrid.innerHTML = '<p class="text-indigo-400 col-span-full text-center">Buscando...</p>';
-        pelisYSeries = await buscarEnTMDB(query); // Guardamos en la variable global
+        pelisYSeries = await buscarEnTMDB(query); 
         renderResults(pelisYSeries);
     }
 }
@@ -117,21 +117,20 @@ async function añadirALista(tmdb_id) {
         return;
     }
 
-    // Rescatamos los datos del array global usando el ID que nos pasa el botón
     const item = pelisYSeries.find(i => i.id === tmdb_id);
     const titulo = item.title || item.name;
     const tipo = item.media_type;
 
-    // 1. Guardar en el catálogo general (Ignoramos el error si ya existía de antes)
-    await supabase.from('items').insert({
+    // 1. Guardar en el catálogo general
+    await clienteSupabase.from('items').insert({
         tmdb_id: item.id,
         title: titulo,
         type: tipo,
         poster_path: item.poster_path
     });
 
-    // 2. Obtener el UUID interno de Supabase para esta película/serie
-    const { data: dbItem, error: errorSelect } = await supabase
+    // 2. Obtener el UUID interno
+    const { data: dbItem, error: errorSelect } = await clienteSupabase
         .from('items')
         .select('id')
         .eq('tmdb_id', item.id)
@@ -143,15 +142,15 @@ async function añadirALista(tmdb_id) {
         return;
     }
 
-    // 3. Vincularlo a tu usuario en user_tracking (Por defecto como 'pendiente')
-    const { error: errorInsert } = await supabase.from('user_tracking').insert({
+    // 3. Vincularlo a tu usuario
+    const { error: errorInsert } = await clienteSupabase.from('user_tracking').insert({
         user_id: usuarioActual.id,
         item_id: dbItem.id,
         status: 'pendiente'
     });
 
     if (errorInsert) {
-        if (errorInsert.code === '23505') { // 23505 es el código SQL de duplicado
+        if (errorInsert.code === '23505') { 
             alert("¡Ya tienes esto en tu lista!");
         } else {
             alert("Error al añadir a tu lista.");
