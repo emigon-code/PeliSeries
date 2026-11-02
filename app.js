@@ -23,6 +23,7 @@ let currentLayoutMode = 'grid';
 let currentPosterSize = 'medium'; 
 
 // ELEMENTOS DOM
+const authPanel = document.getElementById('authPanel'); // Capturamos el panel completo
 const searchInput = document.getElementById('searchInput');
 const searchBtn = document.getElementById('searchBtn');
 const resultsGrid = document.getElementById('resultsGrid');
@@ -57,6 +58,14 @@ const detailRecommendations = document.getElementById('detailRecommendations');
 const modalEpisodios = document.getElementById('modalEpisodios');
 
 
+// --- CLASES DE ESTILOS PARA EL CENTRO DE CONTROL UI ---
+const pillActiveClass = 'px-4 py-2 rounded-xl text-xs font-bold transition-all bg-indigo-500 text-white shadow-md shadow-indigo-900/30';
+const pillInactiveClass = 'px-4 py-2 rounded-xl text-xs font-bold transition-all bg-transparent text-gray-400 hover:text-gray-100 hover:bg-gray-700/50';
+
+const searchPillActive = 'px-3 py-1.5 rounded-xl text-xs font-bold bg-indigo-500 text-white shadow-md transition-all';
+const searchPillInactive = 'px-3 py-1.5 rounded-xl text-xs font-bold bg-transparent text-gray-400 hover:bg-gray-700/50 transition-all';
+
+
 // --- AUTENTICACIÓN ---
 async function iniciarSesion() {
     const email = emailInput.value;
@@ -72,7 +81,7 @@ async function comprobarSesion() {
 }
 
 async function postLoginSetup() {
-    loginForm.classList.add('hidden');
+    authPanel.classList.add('hidden'); // Oculta TODO el contenedor de login
     userLogged.classList.remove('hidden');
     await actualizarIdsLocales(); 
     btnNavList.click(); 
@@ -81,7 +90,8 @@ async function postLoginSetup() {
 logoutBtn.addEventListener('click', async () => {
     await clienteSupabase.auth.signOut();
     usuarioActual = null; miListaTMDBIDs = []; miBibliotecaLocal = [];
-    userLogged.classList.add('hidden'); loginForm.classList.remove('hidden');
+    authPanel.classList.remove('hidden'); // Muestra panel
+    userLogged.classList.add('hidden'); // Oculta controles superiores
     emailInput.value = ''; passInput.value = '';
     btnNavList.click(); 
     resultsGrid.innerHTML = ''; myListGrid.innerHTML = '';
@@ -94,19 +104,19 @@ comprobarSesion();
 // --- NAVEGACIÓN ---
 btnNavSearch.addEventListener('click', () => {
     viewSearch.classList.remove('hidden'); viewList.classList.add('hidden');
-    btnNavSearch.classList.replace('bg-transparent', 'bg-gray-700');
-    btnNavSearch.classList.replace('text-gray-300', 'text-white');
+    btnNavSearch.classList.replace('bg-transparent', 'bg-gray-700/50');
+    btnNavSearch.classList.replace('text-gray-400', 'text-white');
     btnNavList.classList.replace('bg-indigo-600', 'bg-transparent');
-    btnNavList.classList.replace('text-white', 'text-gray-300');
+    btnNavList.classList.replace('text-white', 'text-gray-400');
     if (pelisYSeries.length > 0) renderResults(pelisYSeries); 
 });
 
 btnNavList.addEventListener('click', () => {
     viewSearch.classList.add('hidden'); viewList.classList.remove('hidden');
     btnNavList.classList.replace('bg-transparent', 'bg-indigo-600');
-    btnNavList.classList.replace('text-gray-300', 'text-white');
-    btnNavSearch.classList.replace('bg-gray-700', 'bg-transparent');
-    btnNavSearch.classList.replace('text-white', 'text-gray-300');
+    btnNavList.classList.replace('text-gray-400', 'text-white');
+    btnNavSearch.classList.replace('bg-gray-700/50', 'bg-transparent');
+    btnNavSearch.classList.replace('text-white', 'text-gray-400');
     cargarMiLista();
 });
 
@@ -189,10 +199,8 @@ searchInput.addEventListener('keypress', (e) => { if (e.key === 'Enter') ejecuta
 
 document.querySelectorAll('.search-sort-btn').forEach(btn => {
     btn.addEventListener('click', (e) => {
-        document.querySelectorAll('.search-sort-btn').forEach(b => {
-            b.className = 'search-sort-btn px-3 py-1.5 rounded-lg text-xs font-bold bg-gray-900/50 text-gray-400 hover:bg-gray-700 transition-all';
-        });
-        e.target.className = 'search-sort-btn px-3 py-1.5 rounded-lg text-xs font-bold bg-indigo-600 text-white shadow transition-all';
+        document.querySelectorAll('.search-sort-btn').forEach(b => b.className = `search-sort-btn ${searchPillInactive}`);
+        e.target.className = `search-sort-btn ${searchPillActive}`;
         currentSearchSort = e.target.getAttribute('data-search-sort');
         renderResults(pelisYSeries);
     });
@@ -221,19 +229,19 @@ function renderResults(resultados) {
         const yaLaTengo = miListaTMDBIDs.includes(item.id);
         const botonAñadir = yaLaTengo 
             ? `<button disabled class="mt-auto w-full bg-green-900/50 text-green-400 py-2.5 rounded-xl text-xs font-bold border border-green-800/80">✓ En tu lista</button>`
-            : `<button class="mt-auto w-full bg-gray-700 hover:bg-gray-600 text-white py-2.5 rounded-xl text-xs font-semibold transition-colors shadow" onclick="event.stopPropagation(); añadirALista(${item.id})">+ Añadir a mi lista</button>`;
+            : `<button class="mt-auto w-full bg-gray-700 hover:bg-indigo-600 text-white py-2.5 rounded-xl text-xs font-semibold transition-colors shadow" onclick="event.stopPropagation(); añadirALista(${item.id})">+ Añadir a mi lista</button>`;
 
         const card = document.createElement('div');
-        card.className = 'bg-gray-800 rounded-2xl overflow-hidden shadow-lg hover:ring-2 hover:ring-indigo-500 transition-all flex flex-col cursor-pointer group relative border border-gray-700/50';
+        card.className = 'glass-panel rounded-2xl overflow-hidden shadow-lg hover:border-indigo-500/50 hover:shadow-indigo-500/10 transition-all cursor-pointer group relative';
         card.onclick = () => abrirModalDetalleDesdeBusqueda(item.id);
 
         card.innerHTML = `
             <div class="relative aspect-[2/3] overflow-hidden bg-gray-900">
                 <img src="${imgUrl}" alt="${titulo}" class="w-full h-full object-cover group-hover:scale-105 transition-transform duration-300">
-                <span class="absolute top-2 right-2 bg-black/80 backdrop-blur-md text-yellow-400 text-[10px] font-bold px-2 py-1 rounded-lg border border-yellow-500/20">⭐ ${rating}</span>
+                <span class="absolute top-2 right-2 bg-black/80 backdrop-blur-md text-yellow-400 text-[10px] font-bold px-2 py-1 rounded-lg border border-yellow-500/20 shadow-md">⭐ ${rating}</span>
             </div>
-            <div class="p-3.5 flex flex-col flex-grow">
-                <span class="text-[9px] font-bold uppercase tracking-wider text-gray-400 mb-0.5">${tipo}</span>
+            <div class="p-4 flex flex-col flex-grow bg-gray-800/80">
+                <span class="text-[9px] font-bold uppercase tracking-widest text-gray-400 mb-0.5">${tipo}</span>
                 <h3 class="font-bold text-sm leading-snug mb-3 line-clamp-2 group-hover:text-indigo-400 transition-colors">${titulo}</h3>
                 ${botonAñadir}
             </div>
@@ -243,13 +251,13 @@ function renderResults(resultados) {
 }
 
 
-// --- FILTROS Y ORDENACIÓN EN MI LISTA ---
+// --- GESTIÓN VISUAL DEL CENTRO DE CONTROL DE MI LISTA ---
 function updateBtnClasses(selector, activeValue, dataAttr) {
     document.querySelectorAll(selector).forEach(btn => {
         if(btn.getAttribute(dataAttr) == activeValue) {
-            btn.className = `${selector.replace('.','')} px-3 py-1.5 rounded-xl text-xs font-bold transition-all bg-indigo-600 text-white shadow`;
+            btn.className = `${selector.replace('.','')} ${pillActiveClass}`;
         } else {
-            btn.className = `${selector.replace('.','')} px-3 py-1.5 rounded-xl text-xs font-bold transition-all bg-transparent text-gray-400 hover:text-white`;
+            btn.className = `${selector.replace('.','')} ${pillInactiveClass}`;
         }
     });
 }
@@ -295,14 +303,14 @@ const btnViewList = document.getElementById('btnViewList');
 
 btnViewGrid.addEventListener('click', () => {
     currentLayoutMode = 'grid';
-    btnViewGrid.className = 'p-1.5 rounded-xl text-sm bg-indigo-600 text-white shadow transition-all';
-    btnViewList.className = 'p-1.5 rounded-xl text-sm bg-transparent text-gray-400 hover:text-white transition-all';
+    btnViewGrid.className = `layout-btn ${pillActiveClass}`;
+    btnViewList.className = `layout-btn ${pillInactiveClass}`;
     aplicarFiltrosYDiseño();
 });
 btnViewList.addEventListener('click', () => {
     currentLayoutMode = 'list';
-    btnViewList.className = 'p-1.5 rounded-xl text-sm bg-indigo-600 text-white shadow transition-all';
-    btnViewGrid.className = 'p-1.5 rounded-xl text-sm bg-transparent text-gray-400 hover:text-white transition-all';
+    btnViewList.className = `layout-btn ${pillActiveClass}`;
+    btnViewGrid.className = `layout-btn ${pillInactiveClass}`;
     aplicarFiltrosYDiseño();
 });
 
@@ -387,7 +395,7 @@ function aplicarFiltrosYDiseño() {
             if (isNaN(r) || r < 8) matchRating = false;
         } else if (currentFilterRating === 6) {
             const r = parseFloat(registro.details.rating);
-            if (isNaN(r) || r < 6 || r >= 8) matchRating = false; // Rango 6 - 7.9
+            if (isNaN(r) || r < 6 || r >= 8) matchRating = false; // Rango 6 a 7.9
         }
 
         return matchType && matchStatus && matchRating;
@@ -428,7 +436,7 @@ function pintarMiLista(dataArray) {
         let badgeSerie = '';
         if (item.type === 'tv') {
             const estadoTexto = details.is_ended ? '🔴 Fin' : '🟢 Emisión';
-            badgeSerie = `<span class="text-[10px] text-gray-300 font-medium block mt-0.5">${details.seasons_count} Temp. • ${estadoTexto}</span>`;
+            badgeSerie = `<span class="text-[10px] text-gray-400 font-medium block mt-1 tracking-wide">${details.seasons_count} Temp. • ${estadoTexto}</span>`;
         }
 
         const card = document.createElement('div');
@@ -444,23 +452,23 @@ function pintarMiLista(dataArray) {
                 listTitleClasses = 'text-lg sm:text-xl';
             }
 
-            card.className = 'bg-gray-800 rounded-2xl overflow-hidden shadow border border-gray-700/80 flex flex-row items-center p-3 md:p-4 gap-4 hover:border-indigo-500 transition-all cursor-pointer';
+            card.className = 'glass-panel rounded-2xl overflow-hidden shadow-lg hover:border-indigo-500/50 hover:shadow-indigo-500/10 transition-all cursor-pointer group flex flex-row items-center p-3 md:p-4 gap-4';
             card.onclick = () => abrirModalDetalleDesdeLista(registro.id);
             
             card.innerHTML = `
-                <img src="${imgUrl}" alt="${item.title}" class="${listImgClasses} object-cover rounded-xl flex-shrink-0 shadow">
+                <img src="${imgUrl}" alt="${item.title}" class="${listImgClasses} object-cover rounded-xl flex-shrink-0 shadow-md">
                 <div class="flex flex-col flex-grow min-w-0">
-                    <div class="flex items-center gap-2 mb-1">
-                        <span class="text-[9px] font-bold uppercase tracking-wider px-2 py-0.5 rounded bg-gray-700 text-gray-300">${item.type === 'movie' ? 'Película' : 'Serie'}</span>
+                    <div class="flex items-center gap-2 mb-1.5">
+                        <span class="text-[9px] font-bold uppercase tracking-widest px-2.5 py-0.5 rounded bg-gray-800 text-gray-300 border border-gray-600/50">${item.type === 'movie' ? 'Película' : 'Serie'}</span>
                         <span class="text-xs font-bold text-yellow-400">⭐ ${details.rating}</span>
                     </div>
                     <h3 class="font-bold ${listTitleClasses} text-white truncate">${item.title}</h3>
                     ${badgeSerie}
                     <p class="text-xs text-gray-400 mt-2 line-clamp-2 hidden sm:block">${details.overview}</p>
                 </div>
-                <div class="flex flex-col gap-2 flex-shrink-0 min-w-[120px]" onclick="event.stopPropagation()">
+                <div class="flex flex-col gap-2 flex-shrink-0 min-w-[130px]" onclick="event.stopPropagation()">
                     <select onchange="cambiarEstado(this, '${registro.id}', ${item.tmdb_id}, '${item.type}', '${item.title.replace(/'/g, "\\'")}')" 
-                            class="w-full bg-gray-700 text-white text-xs font-semibold rounded-xl p-2.5 focus:ring-2 focus:ring-indigo-500 border-none outline-none cursor-pointer">
+                            class="w-full bg-gray-900/80 text-white text-xs font-semibold rounded-xl p-3 focus:ring-2 focus:ring-indigo-500 border border-gray-700/50 outline-none hover:bg-gray-800 transition-colors cursor-pointer shadow-inner">
                         <option value="pendiente" ${registro.status === 'pendiente' ? 'selected' : ''}>⏳ Pendiente</option>
                         <option value="viendo" ${registro.status === 'viendo' ? 'selected' : ''}>👀 Viendo</option>
                         <option value="vista" ${registro.status === 'vista' ? 'selected' : ''}>✅ Vista</option>
@@ -472,21 +480,21 @@ function pintarMiLista(dataArray) {
             let typeClass = 'text-[9px]';
             if (currentPosterSize === 'small') { titleClass = 'text-xs'; typeClass = 'text-[8px]'; }
 
-            card.className = 'bg-gray-800 rounded-2xl overflow-hidden shadow border border-gray-700/80 flex flex-col hover:border-indigo-500 transition-all cursor-pointer group';
+            card.className = 'glass-panel rounded-2xl overflow-hidden shadow-lg hover:border-indigo-500/50 hover:shadow-indigo-500/10 transition-all cursor-pointer group flex flex-col relative';
             card.onclick = () => abrirModalDetalleDesdeLista(registro.id);
             
             card.innerHTML = `
                 <div class="relative aspect-[2/3] overflow-hidden bg-gray-900">
                     <img src="${imgUrl}" alt="${item.title}" class="w-full h-full object-cover group-hover:scale-105 transition-transform duration-300">
-                    <span class="absolute top-2 right-2 bg-black/80 backdrop-blur-md text-yellow-400 text-[10px] font-bold px-2 py-1 rounded-lg border border-yellow-500/20">⭐ ${details.rating}</span>
+                    <span class="absolute top-2 right-2 bg-black/80 backdrop-blur-md text-yellow-400 text-[10px] font-bold px-2 py-1 rounded-lg border border-yellow-500/20 shadow-md">⭐ ${details.rating}</span>
                 </div>
-                <div class="p-3 flex flex-col flex-grow">
-                    <span class="${typeClass} font-bold uppercase text-gray-400 tracking-wider mb-0.5">${item.type === 'movie' ? 'Película' : 'Serie'}</span>
-                    <h3 class="font-bold ${titleClass} leading-snug mt-0.5 mb-1 line-clamp-2 group-hover:text-indigo-400 transition-colors">${item.title}</h3>
+                <div class="p-3.5 flex flex-col flex-grow bg-gray-800/80">
+                    <span class="${typeClass} font-bold uppercase tracking-widest text-gray-400 mb-0.5">${item.type === 'movie' ? 'Película' : 'Serie'}</span>
+                    <h3 class="font-bold ${titleClass} leading-snug mt-1 mb-1 line-clamp-2 group-hover:text-indigo-400 transition-colors">${item.title}</h3>
                     ${badgeSerie}
-                    <div class="mt-auto pt-3" onclick="event.stopPropagation()">
+                    <div class="mt-auto pt-4" onclick="event.stopPropagation()">
                         <select onchange="cambiarEstado(this, '${registro.id}', ${item.tmdb_id}, '${item.type}', '${item.title.replace(/'/g, "\\'")}')" 
-                                class="w-full bg-gray-700 text-white text-xs font-semibold rounded-xl p-2.5 focus:ring-2 focus:ring-indigo-500 border-none outline-none cursor-pointer">
+                                class="w-full bg-gray-900/80 text-white text-xs font-semibold rounded-xl p-2.5 focus:ring-2 focus:ring-indigo-500 border border-gray-700/50 outline-none hover:bg-gray-800 transition-colors cursor-pointer shadow-inner">
                             <option value="pendiente" ${registro.status === 'pendiente' ? 'selected' : ''}>⏳ Pendiente</option>
                             <option value="viendo" ${registro.status === 'viendo' ? 'selected' : ''}>👀 Viendo</option>
                             <option value="vista" ${registro.status === 'vista' ? 'selected' : ''}>✅ Vista</option>
@@ -503,7 +511,6 @@ function pintarMiLista(dataArray) {
 // --- MODAL DE DETALLE Y RECOMENDACIONES ---
 function cerrarModalDetalle() { modalDetalle.classList.add('hidden'); }
 
-// Función puente para abrir desde una recomendación sin perder el tracking
 async function abrirModalDetalleDirecto(tmdb_id, tipo) {
     cerrarModalDetalle();
     try {
@@ -530,8 +537,8 @@ async function cargarRecomendaciones(tmdb_id, tipo) {
             const recTipo = rec.media_type || tipo;
             detailRecommendations.innerHTML += `
                 <div class="flex-shrink-0 w-24 cursor-pointer group" onclick="abrirModalDetalleDirecto(${rec.id}, '${recTipo}')">
-                    <img src="${img}" class="w-full h-36 object-cover rounded-xl shadow-md group-hover:ring-2 ring-indigo-500 transition-all">
-                    <p class="text-[10px] text-gray-300 mt-1.5 truncate group-hover:text-indigo-400">${rec.title || rec.name}</p>
+                    <img src="${img}" class="w-full h-36 object-cover rounded-xl shadow-md border border-transparent group-hover:border-indigo-500 transition-all">
+                    <p class="text-[10px] font-semibold text-gray-400 mt-2 truncate group-hover:text-indigo-400">${rec.title || rec.name}</p>
                 </div>
             `;
         });
@@ -596,12 +603,12 @@ function abrirModalDetalleDesdeLista(tracking_id) {
     }
 
     const botonCapitulos = item.type === 'tv' 
-        ? `<button onclick="cerrarModalDetalle(); abrirModalSeries(${item.tmdb_id}, '${registro.id}', '${item.title.replace(/'/g, "\\'")}')" class="flex-grow bg-indigo-900 hover:bg-indigo-700 text-indigo-100 py-3 rounded-xl text-sm font-bold transition-colors">📋 Ver Capítulos</button>` 
+        ? `<button onclick="cerrarModalDetalle(); abrirModalSeries(${item.tmdb_id}, '${registro.id}', '${item.title.replace(/'/g, "\\'")}')" class="flex-grow bg-indigo-700 hover:bg-indigo-600 text-white py-3 rounded-xl text-sm font-bold transition-colors shadow-lg">📋 Ver Capítulos</button>` 
         : '';
 
     detailActions.innerHTML = `
         ${botonCapitulos}
-        <button onclick="borrarDeMiLista('${registro.id}', ${item.tmdb_id}, '${item.title.replace(/'/g, "\\'")}')" class="bg-red-600/20 hover:bg-red-600 text-red-400 hover:text-white border border-red-600/40 px-5 py-3 rounded-xl text-sm font-bold transition-colors flex items-center justify-center gap-2">
+        <button onclick="borrarDeMiLista('${registro.id}', ${item.tmdb_id}, '${item.title.replace(/'/g, "\\'")}')" class="bg-red-900/30 hover:bg-red-600 text-red-400 hover:text-white border border-red-800/50 px-5 py-3 rounded-xl text-sm font-bold transition-colors flex items-center justify-center gap-2">
             🗑️ Eliminar
         </button>
     `;
@@ -731,13 +738,16 @@ function evaluarBotonSerieCompleta(tracking_id, tmdb_id, titulo) {
         btnMarcarSerie.textContent = "✓ Marcar serie completa";
         btnMarcarSerie.disabled = false;
         btnMarcarSerie.className = "bg-green-700 hover:bg-green-600 text-white text-xs md:text-sm font-bold py-2.5 px-4 rounded-xl shadow transition-colors";
+        
+        // CORRECCIÓN VITAL: Sincronizar DB + Forzar recarga total en UI
         btnMarcarSerie.onclick = async () => {
-            btnMarcarSerie.textContent = "⌛ Guardando capítulos...";
+            btnMarcarSerie.textContent = "⌛ Guardando...";
             btnMarcarSerie.disabled = true;
             await procesarSerieCompletaBBDD(tracking_id, tmdb_id);
-            await evaluarEstadoSerieDesdeEpisodios(tracking_id, tmdb_id);
+            await clienteSupabase.from('user_tracking').update({ status: 'vista' }).eq('id', tracking_id);
             alert(`¡Has marcado toda la serie "${titulo}" como Vista!`);
             cerrarModal();
+            cargarMiLista(); // <--- Esto asegura que la vista principal se sincronice perfecta y de inmediato
         };
     }
 }
