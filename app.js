@@ -22,9 +22,9 @@ let currentSearchSort = 'rating';
 let currentLayoutMode = 'grid'; 
 let currentPosterSize = 'medium'; 
 
-// ESTILOS PREMIUM PARA LOS BOTONES (Gradiente brillante e inactivo translúcido)
-const btnPillActive = 'px-4 py-2 rounded-xl text-xs font-bold transition-all bg-gradient-to-r from-indigo-500 to-purple-600 text-white shadow-md shadow-indigo-500/25';
-const btnPillInactive = 'px-4 py-2 rounded-xl text-xs font-bold transition-all bg-transparent text-gray-400 hover:text-gray-100 hover:bg-white/5';
+// ESTILOS PREMIUM PARA LOS BOTONES (Ahora más compactos px-3 py-1.5)
+const btnPillActive = 'px-3 py-1.5 rounded-lg text-xs font-bold transition-all bg-gradient-to-r from-indigo-500 to-purple-600 text-white shadow-md flex items-center gap-1.5';
+const btnPillInactive = 'px-3 py-1.5 rounded-lg text-xs font-bold transition-all bg-transparent text-gray-400 hover:bg-white/5 flex items-center gap-1.5';
 
 const searchPillActive = 'px-3.5 py-1.5 rounded-xl text-xs font-bold bg-gradient-to-r from-indigo-500 to-purple-600 text-white shadow-md transition-all';
 const searchPillInactive = 'px-3.5 py-1.5 rounded-xl text-xs font-bold bg-transparent text-gray-400 hover:bg-white/5 transition-all';
@@ -36,10 +36,10 @@ const searchBtn = document.getElementById('searchBtn');
 const resultsGrid = document.getElementById('resultsGrid');
 const searchSortBar = document.getElementById('searchSortBar');
 const loginBtn = document.getElementById('loginBtn');
+const registerBtn = document.getElementById('registerBtn'); // Nuevo botón
 const logoutBtn = document.getElementById('logoutBtn');
 const emailInput = document.getElementById('emailInput');
 const passInput = document.getElementById('passInput');
-const loginForm = document.getElementById('loginForm');
 const userLogged = document.getElementById('userLogged');
 const viewSearch = document.getElementById('viewSearch');
 const viewList = document.getElementById('viewList');
@@ -62,16 +62,35 @@ const detailStatus = document.getElementById('detailStatus');
 const detailOverview = document.getElementById('detailOverview');
 const detailActions = document.getElementById('detailActions');
 const detailRecommendations = document.getElementById('detailRecommendations');
+const detailCredits = document.getElementById('detailCredits');
+
 const modalEpisodios = document.getElementById('modalEpisodios');
+const modalPersona = document.getElementById('modalPersona');
 
 
-// --- AUTENTICACIÓN ---
+// --- AUTENTICACIÓN MULTIUSUARIO ---
 async function iniciarSesion() {
     const email = emailInput.value;
     const password = passInput.value;
     const { data, error } = await clienteSupabase.auth.signInWithPassword({ email, password });
     if (error) { alert("Error al iniciar sesión: " + error.message); } 
     else { usuarioActual = data.session.user; postLoginSetup(); }
+}
+
+async function crearCuenta() {
+    const email = emailInput.value;
+    const password = passInput.value;
+    if (!email || password.length < 6) return alert('Introduce un correo válido y una contraseña de al menos 6 caracteres.');
+    
+    registerBtn.textContent = "Creando cuenta...";
+    const { data, error } = await clienteSupabase.auth.signUp({ email, password });
+    registerBtn.textContent = "Crear Nueva Cuenta";
+
+    if (error) { alert("Error al registrar: " + error.message); } 
+    else { 
+        alert("¡Cuenta creada correctamente! Ahora tienes tu propia base de datos independiente. Iniciando sesión automáticamente...");
+        if (data.session) { usuarioActual = data.session.user; postLoginSetup(); }
+    }
 }
 
 async function comprobarSesion() {
@@ -97,7 +116,19 @@ logoutBtn.addEventListener('click', async () => {
 });
 
 loginBtn.addEventListener('click', iniciarSesion);
+registerBtn.addEventListener('click', crearCuenta);
 comprobarSesion();
+
+
+// --- CERRAR MODALES CON TECLA ESC ---
+document.addEventListener('keydown', (e) => {
+    if (e.key === 'Escape') {
+        cerrarModalDetalle();
+        cerrarModalImportacion();
+        cerrarModal(); // Episodios
+        cerrarModalPersona();
+    }
+});
 
 
 // --- NAVEGACIÓN ---
@@ -194,9 +225,7 @@ searchInput.addEventListener('keypress', (e) => { if (e.key === 'Enter') ejecuta
 
 document.querySelectorAll('.search-sort-btn').forEach(btn => {
     btn.addEventListener('click', (e) => {
-        document.querySelectorAll('.search-sort-btn').forEach(b => {
-            b.className = `search-sort-btn ${searchPillInactive}`;
-        });
+        document.querySelectorAll('.search-sort-btn').forEach(b => { b.className = `search-sort-btn ${searchPillInactive}`; });
         e.target.className = `search-sort-btn ${searchPillActive}`;
         currentSearchSort = e.target.getAttribute('data-search-sort');
         renderResults(pelisYSeries);
@@ -252,6 +281,8 @@ function renderResults(resultados) {
 function updateBtnClasses(selector, activeValue, dataAttr) {
     const baseClass = selector.replace('.', '');
     document.querySelectorAll(selector).forEach(btn => {
+        // Mantenemos los iconos dentro del botón
+        const content = btn.innerHTML;
         if(btn.getAttribute(dataAttr) == activeValue) {
             btn.className = `${baseClass} ${btnPillActive}`;
         } else {
@@ -262,35 +293,35 @@ function updateBtnClasses(selector, activeValue, dataAttr) {
 
 document.querySelectorAll('.filter-type-btn').forEach(btn => {
     btn.addEventListener('click', (e) => {
-        currentFilterType = e.target.getAttribute('data-filter-type');
+        currentFilterType = e.currentTarget.getAttribute('data-filter-type');
         updateBtnClasses('.filter-type-btn', currentFilterType, 'data-filter-type');
         aplicarFiltrosYDiseño();
     });
 });
 document.querySelectorAll('.filter-status-btn').forEach(btn => {
     btn.addEventListener('click', (e) => {
-        currentFilterStatus = e.target.getAttribute('data-filter-status');
+        currentFilterStatus = e.currentTarget.getAttribute('data-filter-status');
         updateBtnClasses('.filter-status-btn', currentFilterStatus, 'data-filter-status');
         aplicarFiltrosYDiseño();
     });
 });
 document.querySelectorAll('.filter-rating-btn').forEach(btn => {
     btn.addEventListener('click', (e) => {
-        currentFilterRating = parseFloat(e.target.getAttribute('data-filter-rating'));
+        currentFilterRating = parseFloat(e.currentTarget.getAttribute('data-filter-rating'));
         updateBtnClasses('.filter-rating-btn', currentFilterRating, 'data-filter-rating');
         aplicarFiltrosYDiseño();
     });
 });
 document.querySelectorAll('.sort-btn').forEach(btn => {
     btn.addEventListener('click', (e) => {
-        currentSort = e.target.getAttribute('data-sort');
+        currentSort = e.currentTarget.getAttribute('data-sort');
         updateBtnClasses('.sort-btn', currentSort, 'data-sort');
         aplicarFiltrosYDiseño();
     });
 });
 document.querySelectorAll('.size-btn').forEach(btn => {
     btn.addEventListener('click', (e) => {
-        currentPosterSize = e.target.getAttribute('data-size');
+        currentPosterSize = e.currentTarget.getAttribute('data-size');
         updateBtnClasses('.size-btn', currentPosterSize, 'data-size');
         aplicarFiltrosYDiseño();
     });
@@ -301,14 +332,14 @@ const btnViewList = document.getElementById('btnViewList');
 
 btnViewGrid.addEventListener('click', () => {
     currentLayoutMode = 'grid';
-    btnViewGrid.className = `layout-btn ${btnPillActive}`;
-    btnViewList.className = `layout-btn ${btnPillInactive}`;
+    btnViewGrid.className = `layout-btn ${btnPillActive.replace('gap-1.5', '')}`;
+    btnViewList.className = `layout-btn ${btnPillInactive.replace('gap-1.5', '')}`;
     aplicarFiltrosYDiseño();
 });
 btnViewList.addEventListener('click', () => {
     currentLayoutMode = 'list';
-    btnViewList.className = `layout-btn ${btnPillActive}`;
-    btnViewGrid.className = `layout-btn ${btnPillInactive}`;
+    btnViewList.className = `layout-btn ${btnPillActive.replace('gap-1.5', '')}`;
+    btnViewGrid.className = `layout-btn ${btnPillInactive.replace('gap-1.5', '')}`;
     aplicarFiltrosYDiseño();
 });
 
@@ -402,7 +433,6 @@ async function cargarMiLista() {
                 seasons_data: tmdbData.seasons || []
             };
             
-            // CORRECCIÓN SÓLIDA: Si todos los capítulos están marcados, aseguramos que el estado en base de datos sea 'vista'
             if (item.type === 'tv' && registro.status !== 'vista') {
                 const totalOficial = calcularTotalCapitulosOficiales(registro.details.seasons_data);
                 const vistosCount = (registro.user_episodes || []).length;
@@ -560,8 +590,46 @@ function pintarMiLista(dataArray) {
 }
 
 
-// --- MODAL DE DETALLE Y RECOMENDACIONES ---
+// --- MODAL DE DETALLE, CRÉDITOS Y RECOMENDACIONES ---
 function cerrarModalDetalle() { modalDetalle.classList.add('hidden'); }
+
+async function cargarCreditos(tmdb_id, tipo) {
+    detailCredits.innerHTML = '<span class="text-xs text-gray-500">Cargando ficha técnica...</span>';
+    try {
+        const res = await fetch(`https://api.themoviedb.org/3/${tipo}/${tmdb_id}/credits?language=es-ES`, { headers: { Authorization: `Bearer ${TMDB_TOKEN}` } });
+        const data = await res.json();
+        
+        // Buscamos a los responsables clave
+        const director = data.crew.find(c => c.job === 'Director') || data.crew.find(c => c.department === 'Directing');
+        const musico = data.crew.find(c => c.job === 'Original Music Composer' || c.job === 'Music');
+        const reparto = data.cast.slice(0, 6); // Extraemos el Top 6 de actores
+
+        let html = '';
+        if (director) html += crearPillPersona('🎬 Dirección', director);
+        if (musico) html += crearPillPersona('🎵 Música', musico);
+        
+        if (reparto.length > 0) {
+            html += `<div class="flex flex-wrap items-center gap-2 mt-1"><span class="text-[10px] font-black text-gray-400 uppercase tracking-widest mr-1">🎭 Reparto:</span>`;
+            reparto.forEach(actor => { html += generarBotonPersona(actor); });
+            html += `</div>`;
+        }
+
+        if (html === '') html = '<span class="text-xs text-gray-500">Sin datos técnicos registrados.</span>';
+        detailCredits.innerHTML = html;
+
+    } catch(e) { detailCredits.innerHTML = ''; }
+}
+
+function crearPillPersona(rol, persona) {
+    return `<div class="flex items-center gap-2 mb-1">
+        <span class="text-[10px] font-black text-gray-400 uppercase tracking-widest">${rol}:</span>
+        ${generarBotonPersona(persona)}
+    </div>`;
+}
+
+function generarBotonPersona(persona) {
+    return `<button onclick="abrirModalPersona(${persona.id}, '${persona.name.replace(/'/g, "\\'")}')" class="bg-gray-800/80 hover:bg-indigo-600 text-gray-300 hover:text-white px-2.5 py-1 rounded-lg text-xs font-semibold border border-gray-600/50 transition-colors shadow-sm flex items-center gap-1.5"><span class="text-indigo-400">👤</span> ${persona.name}</button>`;
+}
 
 async function abrirModalDetalleDirecto(tmdb_id, tipo) {
     cerrarModalDetalle();
@@ -632,6 +700,7 @@ async function abrirModalDetalleDesdeBusqueda(tmdb_id) {
         ? `<button disabled class="w-full bg-green-950/60 text-green-400 py-3 rounded-xl text-sm font-bold border border-green-800">✓ Ya está en tu biblioteca</button>`
         : `<button onclick="añadirALista(${item.id}); cerrarModalDetalle();" class="w-full bg-gradient-to-r from-indigo-500 to-purple-600 hover:from-indigo-400 hover:to-purple-500 text-white py-3 rounded-xl text-sm font-bold transition-colors shadow">+ Añadir a mi lista</button>`;
 
+    cargarCreditos(tmdb_id, item.media_type);
     cargarRecomendaciones(tmdb_id, item.media_type);
 }
 
@@ -670,7 +739,49 @@ function abrirModalDetalleDesdeLista(tracking_id) {
         </button>
     `;
 
+    cargarCreditos(item.tmdb_id, item.type);
     cargarRecomendaciones(item.tmdb_id, item.type);
+}
+
+
+// --- MODAL FILMOGRAFÍA PERSONA ---
+const cerrarModalPersona = () => { modalPersona.classList.add('hidden'); }
+
+async function abrirModalPersona(personId, personName) {
+    modalPersona.classList.remove('hidden');
+    document.getElementById('personaName').innerHTML = `<span class="text-indigo-400 text-2xl">👤</span> ${personName}`;
+    const grid = document.getElementById('personaWorks');
+    grid.innerHTML = '<p class="text-indigo-400 text-sm p-4">Cargando filmografía destacada...</p>';
+
+    try {
+        const res = await fetch(`https://api.themoviedb.org/3/person/${personId}/combined_credits?language=es-ES`, { headers: { Authorization: `Bearer ${TMDB_TOKEN}` } });
+        const data = await res.json();
+        
+        // Ordenamos por popularidad para mostrar sus mejores/más conocidos trabajos y nos quedamos con los 15 mejores
+        const trabajos = data.cast.sort((a,b) => b.popularity - a.popularity).slice(0, 15);
+        
+        if(trabajos.length === 0) {
+            grid.innerHTML = '<p class="text-gray-500 text-sm p-4">No hay trabajos registrados.</p>';
+            return;
+        }
+
+        grid.innerHTML = '';
+        trabajos.forEach(w => {
+            const img = w.poster_path ? `https://image.tmdb.org/t/p/w200${w.poster_path}` : 'https://via.placeholder.com/200x300/1f2937/ffffff?text=X';
+            const title = w.title || w.name;
+            const tipo = w.media_type;
+            
+            grid.innerHTML += `
+                <div class="flex-shrink-0 w-28 cursor-pointer group" onclick="cerrarModalPersona(); abrirModalDetalleDirecto(${w.id}, '${tipo}')">
+                    <div class="relative">
+                        <img src="${img}" class="w-full h-40 object-cover rounded-xl shadow-md border border-transparent group-hover:border-indigo-500 transition-all">
+                        <span class="absolute top-1 right-1 bg-black/80 backdrop-blur-md text-gray-300 text-[9px] font-bold px-1.5 py-0.5 rounded shadow-md border border-gray-600/50">${tipo === 'movie' ? '🍿' : '📺'}</span>
+                    </div>
+                    <p class="text-xs font-semibold text-gray-300 mt-2 line-clamp-2 group-hover:text-indigo-400 leading-tight">${title}</p>
+                </div>
+            `;
+        });
+    } catch(e) { grid.innerHTML = '<p class="text-red-400 p-4">Error al cargar trabajos.</p>'; }
 }
 
 
