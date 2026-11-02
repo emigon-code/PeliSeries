@@ -195,7 +195,7 @@ async function cargarMiLista() {
         .select(`
             id,
             status,
-            items ( id, title, type, poster_path )
+            items ( id, tmdb_id, title, type, poster_path )
         `)
         .eq('user_id', usuarioActual.id)
         .order('created_at', { ascending: false });
