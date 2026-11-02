@@ -217,11 +217,19 @@ function pintarMiLista(registros) {
     }
 
     registros.forEach(registro => {
-        // Extraemos los datos cruzados
         const item = registro.items; 
         const imgUrl = item.poster_path ? `https://image.tmdb.org/t/p/w500${item.poster_path}` : 'https://via.placeholder.com/500x750/1f2937/ffffff?text=Sin+Póster';
         const tipo = item.type === 'movie' ? 'Película' : 'Serie';
         const colorTipo = item.type === 'movie' ? 'text-blue-400' : 'text-green-400';
+
+        // NUEVO: Creamos el botón solo si el tipo es 'tv' (Serie)
+        // Usamos replace para evitar que títulos con apóstrofes rompan el HTML
+        const botonCapitulos = item.type === 'tv' 
+            ? `<button onclick="abrirModalSeries(${item.tmdb_id}, '${registro.id}', '${item.title.replace(/'/g, "\\'")}')" 
+                       class="mt-2 w-full bg-indigo-900 hover:bg-indigo-700 text-indigo-100 py-2 rounded text-sm font-semibold transition-colors">
+                 📋 Ver Capítulos
+               </button>` 
+            : '';
 
         const card = document.createElement('div');
         card.className = 'bg-gray-800 rounded-xl overflow-hidden shadow border border-gray-700 flex flex-col';
@@ -234,11 +242,12 @@ function pintarMiLista(registros) {
                 <div class="mt-auto">
                     <label class="text-xs text-gray-400 uppercase font-bold">Estado:</label>
                     <select onchange="cambiarEstado('${registro.id}', this.value)" 
-                            class="w-full mt-1 bg-gray-700 text-white text-sm rounded p-2 focus:ring-indigo-500 border-none outline-none cursor-pointer">
+                            class="w-full mt-1 mb-2 bg-gray-700 text-white text-sm rounded p-2 focus:ring-indigo-500 border-none outline-none cursor-pointer">
                         <option value="pendiente" ${registro.status === 'pendiente' ? 'selected' : ''}>Pendiente</option>
                         <option value="viendo" ${registro.status === 'viendo' ? 'selected' : ''}>Viendo</option>
                         <option value="vista" ${registro.status === 'vista' ? 'selected' : ''}>Vista</option>
                     </select>
+                    ${botonCapitulos}
                 </div>
             </div>
         `;
