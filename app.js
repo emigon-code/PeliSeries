@@ -22,6 +22,12 @@ let currentSearchSort = 'rating';
 let currentLayoutMode = 'grid'; 
 let currentPosterSize = 'medium'; 
 
+// CLASES REUTILIZABLES PARA EL DISEÑO DE BOTONES (Protegidas)
+const btnPillActive = 'px-4 py-2 rounded-xl text-xs font-bold transition-all bg-indigo-500 text-white shadow-md shadow-indigo-900/30';
+const btnPillInactive = 'px-4 py-2 rounded-xl text-xs font-bold transition-all bg-transparent text-gray-400 hover:text-gray-100 hover:bg-gray-700/50';
+const searchPillActive = 'px-3 py-1.5 rounded-xl text-xs font-bold bg-indigo-500 text-white shadow-md transition-all';
+const searchPillInactive = 'px-3 py-1.5 rounded-xl text-xs font-bold bg-transparent text-gray-400 hover:bg-gray-700/50 transition-all';
+
 // ELEMENTOS DOM
 const authPanel = document.getElementById('authPanel');
 const searchInput = document.getElementById('searchInput');
@@ -96,19 +102,15 @@ comprobarSesion();
 // --- NAVEGACIÓN ---
 btnNavSearch.addEventListener('click', () => {
     viewSearch.classList.remove('hidden'); viewList.classList.add('hidden');
-    btnNavSearch.classList.replace('bg-transparent', 'bg-gray-700/50');
-    btnNavSearch.classList.replace('text-gray-400', 'text-white');
-    btnNavList.classList.replace('bg-indigo-600', 'bg-transparent');
-    btnNavList.classList.replace('text-white', 'text-gray-400');
+    btnNavSearch.className = 'bg-gray-700/50 px-6 py-2 rounded-full font-bold text-sm text-white transition-all';
+    btnNavList.className = 'bg-transparent hover:bg-gray-700/50 px-6 py-2 rounded-full font-bold text-sm text-gray-400 transition-all';
     if (pelisYSeries.length > 0) renderResults(pelisYSeries); 
 });
 
 btnNavList.addEventListener('click', () => {
     viewSearch.classList.add('hidden'); viewList.classList.remove('hidden');
-    btnNavList.classList.replace('bg-transparent', 'bg-indigo-600');
-    btnNavList.classList.replace('text-gray-400', 'text-white');
-    btnNavSearch.classList.replace('bg-gray-700/50', 'bg-transparent');
-    btnNavSearch.classList.replace('text-white', 'text-gray-400');
+    btnNavList.className = 'bg-indigo-600 px-6 py-2 rounded-full font-bold text-sm text-white transition-all shadow-md';
+    btnNavSearch.className = 'bg-transparent hover:bg-gray-700/50 px-6 py-2 rounded-full font-bold text-sm text-gray-400 transition-all';
     cargarMiLista();
 });
 
@@ -192,11 +194,9 @@ searchInput.addEventListener('keypress', (e) => { if (e.key === 'Enter') ejecuta
 document.querySelectorAll('.search-sort-btn').forEach(btn => {
     btn.addEventListener('click', (e) => {
         document.querySelectorAll('.search-sort-btn').forEach(b => {
-            b.classList.remove('pill-active');
-            b.classList.add('pill-inactive');
+            b.className = `search-sort-btn ${searchPillInactive}`;
         });
-        e.target.classList.remove('pill-inactive');
-        e.target.classList.add('pill-active');
+        e.target.className = `search-sort-btn ${searchPillActive}`;
         currentSearchSort = e.target.getAttribute('data-search-sort');
         renderResults(pelisYSeries);
     });
@@ -247,15 +247,14 @@ function renderResults(resultados) {
 }
 
 
-// --- GESTIÓN VISUAL DEL CENTRO DE CONTROL (CORREGIDO) ---
+// --- GESTIÓN VISUAL DEL CENTRO DE CONTROL DE MI LISTA ---
 function updateBtnClasses(selector, activeValue, dataAttr) {
+    const baseClass = selector.replace('.', '');
     document.querySelectorAll(selector).forEach(btn => {
         if(btn.getAttribute(dataAttr) == activeValue) {
-            btn.classList.add('pill-active');
-            btn.classList.remove('pill-inactive');
+            btn.className = `${baseClass} ${btnPillActive}`;
         } else {
-            btn.classList.add('pill-inactive');
-            btn.classList.remove('pill-active');
+            btn.className = `${baseClass} ${btnPillInactive}`;
         }
     });
 }
@@ -301,18 +300,14 @@ const btnViewList = document.getElementById('btnViewList');
 
 btnViewGrid.addEventListener('click', () => {
     currentLayoutMode = 'grid';
-    btnViewGrid.classList.add('pill-active');
-    btnViewGrid.classList.remove('pill-inactive');
-    btnViewList.classList.add('pill-inactive');
-    btnViewList.classList.remove('pill-active');
+    btnViewGrid.className = `layout-btn ${btnPillActive}`;
+    btnViewList.className = `layout-btn ${btnPillInactive}`;
     aplicarFiltrosYDiseño();
 });
 btnViewList.addEventListener('click', () => {
     currentLayoutMode = 'list';
-    btnViewList.classList.add('pill-active');
-    btnViewList.classList.remove('pill-inactive');
-    btnViewGrid.classList.add('pill-inactive');
-    btnViewGrid.classList.remove('pill-active');
+    btnViewList.className = `layout-btn ${btnPillActive}`;
+    btnViewGrid.className = `layout-btn ${btnPillInactive}`;
     aplicarFiltrosYDiseño();
 });
 
@@ -347,12 +342,37 @@ async function borrarDeMiLista(tracking_id, tmdb_id, titulo) {
 
 
 // --- PESTAÑA MI LISTA CON DETALLES ---
+function recalcularSiguienteCapitulo(registro) {
+    if (registro.items.type !== 'tv' || registro.status === 'vista' || !registro.details.seasons_data) {
+        registro.details.next_episode = null;
+        return;
+    }
+    const watched = registro.user_episodes || [];
+    const validSeasons = registro.details.seasons_data.filter(s => s.season_number > 0).sort((a,b) => a.season_number - b.season_number);
+    
+    for (const s of validSeasons) {
+        let missingEp = 0;
+        for (let e = 1; e <= s.episode_count; e++) {
+            if (!watched.some(w => w.season_number === s.season_number && w.episode_number === e)) {
+                missingEp = e;
+                break;
+            }
+        }
+        if (missingEp > 0) {
+            registro.details.next_episode = `T${s.season_number}x${missingEp.toString().padStart(2, '0')}`;
+            return;
+        }
+    }
+    registro.details.next_episode = null;
+}
+
 async function cargarMiLista() {
     if (!usuarioActual) return;
     myListGrid.innerHTML = '<p class="text-indigo-400 col-span-full text-center py-8">Cargando biblioteca personal...</p>';
 
+    // Se ha añadido "user_episodes(season_number, episode_number)" a la consulta para traer los capítulos vistos
     const { data, error } = await clienteSupabase.from('user_tracking')
-        .select(`id, status, items ( id, tmdb_id, title, type, poster_path )`)
+        .select(`id, status, items ( id, tmdb_id, title, type, poster_path ), user_episodes (season_number, episode_number)`)
         .eq('user_id', usuarioActual.id).order('created_at', { ascending: false });
 
     if (error || data.length === 0) {
@@ -369,17 +389,20 @@ async function cargarMiLista() {
             const res = await fetch(`https://api.themoviedb.org/3/${endpoint}?language=es-ES`, { headers: { Authorization: `Bearer ${TMDB_TOKEN}` } });
             const tmdbData = await res.json();
             
-            return {
-                ...registro,
-                details: {
-                    rating: tmdbData.vote_average ? tmdbData.vote_average.toFixed(1) : 'N/A',
-                    overview: tmdbData.overview || 'Sin descripción disponible.',
-                    seasons_count: tmdbData.number_of_seasons || 0,
-                    is_ended: tmdbData.status === 'Ended' || tmdbData.status === 'Canceled'
-                }
+            registro.details = {
+                rating: tmdbData.vote_average ? tmdbData.vote_average.toFixed(1) : 'N/A',
+                overview: tmdbData.overview || 'Sin descripción disponible.',
+                seasons_count: tmdbData.number_of_seasons || 0,
+                is_ended: tmdbData.status === 'Ended' || tmdbData.status === 'Canceled',
+                seasons_data: tmdbData.seasons || [] // Guardamos la info de las temporadas para el cálculo local
             };
+            
+            // Calculamos el siguiente capítulo basándonos en lo que nos ha traído Supabase
+            recalcularSiguienteCapitulo(registro);
+
+            return registro;
         } catch(e) {
-            return { ...registro, details: { rating: 'N/A', overview: 'Sin datos.', seasons_count: 0, is_ended: false } };
+            return { ...registro, details: { rating: 'N/A', overview: 'Sin datos.', seasons_count: 0, is_ended: false, next_episode: null } };
         }
     }));
 
@@ -397,7 +420,7 @@ function aplicarFiltrosYDiseño() {
             if (isNaN(r) || r < 8) matchRating = false;
         } else if (currentFilterRating === 6) {
             const r = parseFloat(registro.details.rating);
-            if (isNaN(r) || r < 6 || r >= 8) matchRating = false; // Rango 6 a 7.9
+            if (isNaN(r) || r < 6 || r >= 8) matchRating = false;
         }
 
         return matchType && matchStatus && matchRating;
@@ -436,9 +459,22 @@ function pintarMiLista(dataArray) {
         const imgUrl = item.poster_path ? `https://image.tmdb.org/t/p/w500${item.poster_path}` : 'https://via.placeholder.com/500x750/1f2937/ffffff?text=Sin+Poster';
         
         let badgeSerie = '';
+        let badgeNextEpisode = '';
+
         if (item.type === 'tv') {
             const estadoTexto = details.is_ended ? '🔴 Fin' : '🟢 Emisión';
             badgeSerie = `<span class="text-[10px] text-gray-400 font-medium block mt-1 tracking-wide">${details.seasons_count} Temp. • ${estadoTexto}</span>`;
+            
+            // Renderizamos la etiqueta de "Siguiente capítulo" si existe
+            if (details.next_episode) {
+                badgeNextEpisode = `
+                    <div class="mt-1">
+                        <span class="inline-block text-[9px] sm:text-[10px] font-bold bg-indigo-900/60 text-indigo-300 px-2 py-0.5 rounded border border-indigo-700/50 shadow-sm">
+                            ▶ Siguiente: ${details.next_episode}
+                        </span>
+                    </div>
+                `;
+            }
         }
 
         const card = document.createElement('div');
@@ -466,6 +502,7 @@ function pintarMiLista(dataArray) {
                     </div>
                     <h3 class="font-bold ${listTitleClasses} text-white truncate">${item.title}</h3>
                     ${badgeSerie}
+                    ${badgeNextEpisode}
                     <p class="text-xs text-gray-400 mt-2 line-clamp-2 hidden sm:block">${details.overview}</p>
                 </div>
                 <div class="flex flex-col gap-2 flex-shrink-0 min-w-[130px]" onclick="event.stopPropagation()">
@@ -494,6 +531,7 @@ function pintarMiLista(dataArray) {
                     <span class="${typeClass} font-bold uppercase tracking-widest text-gray-400 mb-0.5">${item.type === 'movie' ? 'Película' : 'Serie'}</span>
                     <h3 class="font-bold ${titleClass} leading-snug mt-1 mb-1 line-clamp-2 group-hover:text-indigo-400 transition-colors">${item.title}</h3>
                     ${badgeSerie}
+                    ${badgeNextEpisode}
                     <div class="mt-auto pt-4" onclick="event.stopPropagation()">
                         <select onchange="cambiarEstado(this, '${registro.id}', ${item.tmdb_id}, '${item.type}', '${item.title.replace(/'/g, "\\'")}')" 
                                 class="w-full bg-gray-900/80 text-white text-xs font-semibold rounded-xl p-2.5 focus:ring-2 focus:ring-indigo-500 border border-gray-700/50 outline-none hover:bg-gray-800 transition-colors cursor-pointer shadow-inner">
@@ -649,6 +687,9 @@ async function cambiarEstado(selectElement, tracking_id, tmdb_id, tipo, titulo) 
         if (nuevoEstado === 'vista') {
             if (confirm(`Al marcar "${titulo}" como Vista, se marcarán automáticamente todos sus capítulos. ¿Deseas continuar?`)) {
                 await procesarSerieCompletaBBDD(tracking_id, tmdb_id);
+                // Forzamos la recarga desde base de datos para recuperar todos los capitulos
+                await cargarMiLista();
+                return;
             } else {
                 aplicarFiltrosYDiseño();
                 return; 
@@ -664,8 +705,16 @@ async function cambiarEstado(selectElement, tracking_id, tmdb_id, tipo, titulo) 
     }
 
     await clienteSupabase.from('user_tracking').update({ status: nuevoEstado }).eq('id', tracking_id);
+    
+    // Actualización local
     const index = miBibliotecaLocal.findIndex(r => r.id === tracking_id);
-    if(index > -1) miBibliotecaLocal[index].status = nuevoEstado;
+    if(index > -1) {
+        miBibliotecaLocal[index].status = nuevoEstado;
+        if (nuevoEstado === 'pendiente') {
+            miBibliotecaLocal[index].user_episodes = [];
+            recalcularSiguienteCapitulo(miBibliotecaLocal[index]);
+        }
+    }
     
     selectElement.disabled = false;
     aplicarFiltrosYDiseño();
@@ -858,11 +907,16 @@ async function evaluarEstadoSerieDesdeEpisodios(tracking_id, tmdb_id) {
 
     await clienteSupabase.from('user_tracking').update({ status: nuevoEstado }).eq('id', tracking_id);
     
+    // Actualizamos la memoria local para que recule el nuevo estado y recalcule la etiqueta en tiempo real
     const idx = miBibliotecaLocal.findIndex(r => r.id === tracking_id);
-    if (idx > -1) miBibliotecaLocal[idx].status = nuevoEstado;
+    if (idx > -1) {
+        miBibliotecaLocal[idx].status = nuevoEstado;
+        miBibliotecaLocal[idx].user_episodes = [...vistosTemporal]; // Guardamos el array de episodios vistos
+        recalcularSiguienteCapitulo(miBibliotecaLocal[idx]); // Recalculamos el siguiente capitulo
+    }
 
     const titulo = document.getElementById('modalTitle').textContent;
     evaluarBotonSerieCompleta(tracking_id, tmdb_id, titulo);
     
-    aplicarFiltrosYDiseño(); 
+    aplicarFiltrosYDiseño(); // Repintamos la interfaz de la biblioteca al instante
 }
