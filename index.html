@@ -9,7 +9,8 @@
     <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
     <style>
         body { background-color: #0b0f17; }
-        .custom-scrollbar::-webkit-scrollbar { width: 6px; height: 6px; }
+        /* Ajuste del scrollbar para que sea sutil en la barra compacta */
+        .custom-scrollbar::-webkit-scrollbar { height: 4px; width: 6px; }
         .custom-scrollbar::-webkit-scrollbar-thumb { background-color: #4B5563; border-radius: 10px; }
         .glass-panel { background: rgba(17, 24, 39, 0.75); backdrop-filter: blur(20px); -webkit-backdrop-filter: blur(20px); border: 1px solid rgba(255, 255, 255, 0.08); box-shadow: 0 20px 40px rgba(0,0,0,0.4); }
         .glass-inset { background: rgba(11, 15, 23, 0.85); border: 1px solid rgba(255, 255, 255, 0.05); box-shadow: inset 0 2px 6px rgba(0,0,0,0.5); }
@@ -19,7 +20,7 @@
     <div class="max-w-7xl mx-auto">
         
         <!-- HEADER Y NAVEGACIÓN -->
-        <header class="mb-8 flex flex-col md:flex-row justify-between items-center glass-panel p-4 md:px-6 rounded-3xl gap-4">
+        <header class="mb-6 flex flex-col md:flex-row justify-between items-center glass-panel p-4 md:px-6 rounded-3xl gap-4">
             <h1 class="text-3xl md:text-4xl font-black flex items-center gap-3 px-2">
                 <span class="text-3xl">🍿</span> 
                 <span class="text-transparent bg-clip-text bg-gradient-to-r from-indigo-400 via-purple-400 to-pink-400">PeliSeries</span>
@@ -38,16 +39,22 @@
             </div>
         </header>
 
-        <!-- PANEL DE AUTENTICACIÓN -->
+        <!-- PANEL DE AUTENTICACIÓN MULTIUSUARIO -->
         <div id="authPanel" class="max-w-sm mx-auto mb-10 glass-panel p-8 rounded-3xl mt-16">
             <div class="text-center mb-8">
                 <h2 class="text-2xl font-black text-white mb-2">Bienvenido</h2>
-                <p class="text-sm text-gray-400">Inicia sesión para gestionar tu biblioteca</p>
+                <p class="text-sm text-gray-400">Inicia sesión o crea una cuenta independiente</p>
             </div>
-            <div id="loginForm" class="flex flex-col gap-4">
+            <div id="loginForm" class="flex flex-col gap-3">
                 <input type="email" id="emailInput" placeholder="Tu correo electrónico" class="p-4 rounded-2xl bg-gray-900/90 border border-gray-700/80 text-white focus:outline-none focus:ring-2 focus:ring-indigo-500 transition-all text-sm font-medium shadow-inner">
-                <input type="password" id="passInput" placeholder="Contraseña" class="p-4 rounded-2xl bg-gray-900/90 border border-gray-700/80 text-white focus:outline-none focus:ring-2 focus:ring-indigo-500 transition-all text-sm font-medium shadow-inner">
-                <button id="loginBtn" class="bg-gradient-to-r from-indigo-500 to-purple-600 hover:from-indigo-400 hover:to-purple-500 py-4 rounded-2xl text-white font-bold transition-all shadow-lg shadow-indigo-500/30 mt-2 text-base">Iniciar Sesión</button>
+                <input type="password" id="passInput" placeholder="Contraseña (mín. 6 letras)" class="p-4 rounded-2xl bg-gray-900/90 border border-gray-700/80 text-white focus:outline-none focus:ring-2 focus:ring-indigo-500 transition-all text-sm font-medium shadow-inner">
+                <button id="loginBtn" class="bg-gradient-to-r from-indigo-500 to-purple-600 hover:from-indigo-400 hover:to-purple-500 py-3.5 rounded-2xl text-white font-bold transition-all shadow-lg shadow-indigo-500/30 mt-2">Iniciar Sesión</button>
+                <div class="flex items-center gap-2 my-1">
+                    <div class="h-px bg-gray-700 flex-grow"></div>
+                    <span class="text-xs text-gray-500 font-bold uppercase tracking-widest">o bien</span>
+                    <div class="h-px bg-gray-700 flex-grow"></div>
+                </div>
+                <button id="registerBtn" class="bg-gray-800 hover:bg-gray-700 border border-gray-600 py-3.5 rounded-2xl text-gray-300 hover:text-white font-bold transition-all shadow-md">Crear Nueva Cuenta</button>
             </div>
         </div>
 
@@ -66,12 +73,9 @@
 
             <!-- Ordenación en Buscador -->
             <div id="searchSortBar" class="hidden max-w-4xl mx-auto mb-6 flex justify-end items-center">
-                <div class="flex flex-col gap-1.5">
-                    <span class="text-[10px] font-bold text-gray-500 uppercase tracking-widest pl-2">Ordenar resultados</span>
-                    <div class="flex items-center glass-inset p-1.5 rounded-2xl gap-1">
-                        <button data-search-sort="title" class="search-sort-btn px-3.5 py-1.5 rounded-xl text-xs font-bold bg-transparent text-gray-400 hover:text-white transition-all">🔤 Título</button>
-                        <button data-search-sort="rating" class="search-sort-btn px-3.5 py-1.5 rounded-xl text-xs font-bold bg-gradient-to-r from-indigo-500 to-purple-600 text-white shadow-md transition-all">⭐ Nota</button>
-                    </div>
+                <div class="flex items-center glass-inset p-1.5 rounded-2xl gap-1">
+                    <button data-search-sort="title" class="search-sort-btn px-3.5 py-1.5 rounded-xl text-xs font-bold bg-transparent text-gray-400 hover:text-white transition-all">🔤 Título</button>
+                    <button data-search-sort="rating" class="search-sort-btn px-3.5 py-1.5 rounded-xl text-xs font-bold bg-gradient-to-r from-indigo-500 to-purple-600 text-white shadow-md transition-all">⭐ Nota</button>
                 </div>
             </div>
 
@@ -81,72 +85,47 @@
         <!-- VISTA 2: MI LISTA -->
         <div id="viewList">
             
-            <!-- CENTRO DE CONTROL REDISEÑADO PREMIUM (Glassmorphism + Gradientes) -->
-            <div class="glass-panel p-5 md:p-6 rounded-3xl mb-10 flex flex-col xl:flex-row gap-6 items-start xl:items-center justify-between">
+            <!-- CENTRO DE CONTROL COMPACTO Y HORIZONTAL -->
+            <div class="glass-panel p-2.5 md:p-3 rounded-2xl mb-8 flex flex-row items-center gap-4 overflow-x-auto custom-scrollbar whitespace-nowrap shadow-xl">
                 
-                <div class="flex flex-wrap items-center gap-4 md:gap-6 w-full xl:w-auto">
-                    <!-- Categoría -->
-                    <div class="flex flex-col gap-2">
-                        <span class="text-[10px] font-black text-indigo-300/80 uppercase tracking-widest pl-1">Categoría</span>
-                        <div class="flex items-center glass-inset p-1.5 rounded-2xl gap-1 shadow-inner">
-                            <button data-filter-type="all" class="filter-type-btn px-4 py-2 rounded-xl text-xs font-bold transition-all bg-gradient-to-r from-indigo-500 to-purple-600 text-white shadow-md shadow-indigo-500/25">Todos</button>
-                            <button data-filter-type="movie" class="filter-type-btn px-4 py-2 rounded-xl text-xs font-bold transition-all bg-transparent text-gray-400 hover:text-gray-100 hover:bg-white/5">🍿 Pelis</button>
-                            <button data-filter-type="tv" class="filter-type-btn px-4 py-2 rounded-xl text-xs font-bold transition-all bg-transparent text-gray-400 hover:text-gray-100 hover:bg-white/5">📺 Series</button>
-                        </div>
-                    </div>
-
-                    <!-- Progreso -->
-                    <div class="flex flex-col gap-2">
-                        <span class="text-[10px] font-black text-indigo-300/80 uppercase tracking-widest pl-1">Progreso</span>
-                        <div class="flex items-center glass-inset p-1.5 rounded-2xl gap-1 shadow-inner">
-                            <button data-filter-status="all" class="filter-status-btn px-4 py-2 rounded-xl text-xs font-bold transition-all bg-gradient-to-r from-indigo-500 to-purple-600 text-white shadow-md shadow-indigo-500/25">Todos</button>
-                            <button data-filter-status="pendiente" class="filter-status-btn px-4 py-2 rounded-xl text-xs font-bold transition-all bg-transparent text-gray-400 hover:text-gray-100 hover:bg-white/5">⏳ Ptes</button>
-                            <button data-filter-status="viendo" class="filter-status-btn px-4 py-2 rounded-xl text-xs font-bold transition-all bg-transparent text-gray-400 hover:text-gray-100 hover:bg-white/5">👀 Viendo</button>
-                            <button data-filter-status="vista" class="filter-status-btn px-4 py-2 rounded-xl text-xs font-bold transition-all bg-transparent text-gray-400 hover:text-gray-100 hover:bg-white/5">✅ Vistas</button>
-                        </div>
-                    </div>
-
-                    <!-- Valoración -->
-                    <div class="flex flex-col gap-2">
-                        <span class="text-[10px] font-black text-indigo-300/80 uppercase tracking-widest pl-1">Valoración</span>
-                        <div class="flex items-center glass-inset p-1.5 rounded-2xl gap-1 shadow-inner">
-                            <button data-filter-rating="0" class="filter-rating-btn px-4 py-2 rounded-xl text-xs font-bold transition-all bg-gradient-to-r from-indigo-500 to-purple-600 text-white shadow-md shadow-indigo-500/25">Todas</button>
-                            <button data-filter-rating="8" class="filter-rating-btn px-4 py-2 rounded-xl text-xs font-bold transition-all bg-transparent text-gray-400 hover:text-gray-100 hover:bg-white/5">⭐ 8+</button>
-                            <button data-filter-rating="6" class="filter-rating-btn px-4 py-2 rounded-xl text-xs font-bold transition-all bg-transparent text-gray-400 hover:text-gray-100 hover:bg-white/5">⭐ 6 - 8</button>
-                        </div>
-                    </div>
+                <!-- Categoría -->
+                <div class="flex items-center glass-inset p-1 rounded-xl gap-1 shadow-inner shrink-0">
+                    <button data-filter-type="all" class="filter-type-btn px-3 py-1.5 rounded-lg text-xs font-bold transition-all bg-gradient-to-r from-indigo-500 to-purple-600 text-white shadow-md flex items-center gap-1.5"><span class="text-base">♾️</span> Todo</button>
+                    <button data-filter-type="movie" class="filter-type-btn px-3 py-1.5 rounded-lg text-xs font-bold transition-all bg-transparent text-gray-400 hover:bg-white/5 flex items-center gap-1.5"><span class="text-base">🍿</span> Pelis</button>
+                    <button data-filter-type="tv" class="filter-type-btn px-3 py-1.5 rounded-lg text-xs font-bold transition-all bg-transparent text-gray-400 hover:bg-white/5 flex items-center gap-1.5"><span class="text-base">📺</span> Series</button>
                 </div>
 
-                <div class="hidden xl:block w-px h-16 bg-gradient-to-b from-transparent via-gray-700 to-transparent"></div>
+                <!-- Progreso -->
+                <div class="flex items-center glass-inset p-1 rounded-xl gap-1 shadow-inner shrink-0">
+                    <button data-filter-status="all" class="filter-status-btn px-3 py-1.5 rounded-lg text-xs font-bold transition-all bg-gradient-to-r from-indigo-500 to-purple-600 text-white shadow-md flex items-center gap-1.5"><span class="text-base">♾️</span></button>
+                    <button data-filter-status="pendiente" class="filter-status-btn px-3 py-1.5 rounded-lg text-xs font-bold transition-all bg-transparent text-gray-400 hover:bg-white/5 flex items-center gap-1.5"><span class="text-base">⏳</span> Ptes</button>
+                    <button data-filter-status="viendo" class="filter-status-btn px-3 py-1.5 rounded-lg text-xs font-bold transition-all bg-transparent text-gray-400 hover:bg-white/5 flex items-center gap-1.5"><span class="text-base">👀</span> Viendo</button>
+                    <button data-filter-status="vista" class="filter-status-btn px-3 py-1.5 rounded-lg text-xs font-bold transition-all bg-transparent text-gray-400 hover:bg-white/5 flex items-center gap-1.5"><span class="text-base">✅</span> Vistas</button>
+                </div>
 
-                <div class="flex flex-wrap items-center gap-4 md:gap-6 w-full xl:w-auto">
-                    <!-- Ordenar -->
-                    <div class="flex flex-col gap-2">
-                        <span class="text-[10px] font-black text-indigo-300/80 uppercase tracking-widest pl-1">Ordenar por</span>
-                        <div class="flex items-center glass-inset p-1.5 rounded-2xl gap-1 shadow-inner">
-                            <button data-sort="title" class="sort-btn px-4 py-2 rounded-xl text-xs font-bold transition-all bg-transparent text-gray-400 hover:text-gray-100 hover:bg-white/5">🔤 A-Z</button>
-                            <button data-sort="rating" class="sort-btn px-4 py-2 rounded-xl text-xs font-bold transition-all bg-gradient-to-r from-indigo-500 to-purple-600 text-white shadow-md shadow-indigo-500/25">⭐ Nota</button>
-                        </div>
-                    </div>
+                <!-- Valoración -->
+                <div class="flex items-center glass-inset p-1 rounded-xl gap-1 shadow-inner shrink-0">
+                    <button data-filter-rating="0" class="filter-rating-btn px-3 py-1.5 rounded-lg text-xs font-bold transition-all bg-gradient-to-r from-indigo-500 to-purple-600 text-white shadow-md">⭐ Todas</button>
+                    <button data-filter-rating="8" class="filter-rating-btn px-3 py-1.5 rounded-lg text-xs font-bold transition-all bg-transparent text-gray-400 hover:bg-white/5">⭐ 8+</button>
+                    <button data-filter-rating="6" class="filter-rating-btn px-3 py-1.5 rounded-lg text-xs font-bold transition-all bg-transparent text-gray-400 hover:bg-white/5">⭐ 6-8</button>
+                </div>
 
-                    <!-- Tamaño -->
-                    <div class="flex flex-col gap-2">
-                        <span class="text-[10px] font-black text-indigo-300/80 uppercase tracking-widest pl-1">Póster</span>
-                        <div class="flex items-center glass-inset p-1.5 rounded-2xl gap-1 shadow-inner">
-                            <button data-size="small" class="size-btn px-4 py-2 rounded-xl text-xs font-bold transition-all bg-transparent text-gray-400 hover:text-gray-100 hover:bg-white/5">S</button>
-                            <button data-size="medium" class="size-btn px-4 py-2 rounded-xl text-xs font-bold transition-all bg-gradient-to-r from-indigo-500 to-purple-600 text-white shadow-md shadow-indigo-500/25">M</button>
-                            <button data-size="large" class="size-btn px-4 py-2 rounded-xl text-xs font-bold transition-all bg-transparent text-gray-400 hover:text-gray-100 hover:bg-white/5">L</button>
-                        </div>
-                    </div>
+                <div class="w-px h-6 bg-gray-700/80 shrink-0 mx-1"></div>
 
-                    <!-- Vista -->
-                    <div class="flex flex-col gap-2">
-                        <span class="text-[10px] font-black text-indigo-300/80 uppercase tracking-widest pl-1">Vista</span>
-                        <div class="flex items-center glass-inset p-1.5 rounded-2xl gap-1 shadow-inner">
-                            <button id="btnViewGrid" title="Cuadrícula" class="layout-btn px-4 py-2 rounded-xl text-xs font-bold transition-all bg-gradient-to-r from-indigo-500 to-purple-600 text-white shadow-md shadow-indigo-500/25">🔲</button>
-                            <button id="btnViewList" title="Lista" class="layout-btn px-4 py-2 rounded-xl text-xs font-bold transition-all bg-transparent text-gray-400 hover:text-gray-100 hover:bg-white/5">☰</button>
-                        </div>
-                    </div>
+                <!-- Ordenar -->
+                <div class="flex items-center glass-inset p-1 rounded-xl gap-1 shadow-inner shrink-0">
+                    <button data-sort="title" class="sort-btn px-3 py-1.5 rounded-lg text-xs font-bold transition-all bg-transparent text-gray-400 hover:bg-white/5 flex items-center gap-1.5"><span class="text-base">🔤</span> A-Z</button>
+                    <button data-sort="rating" class="sort-btn px-3 py-1.5 rounded-lg text-xs font-bold transition-all bg-gradient-to-r from-indigo-500 to-purple-600 text-white shadow-md flex items-center gap-1.5"><span class="text-base">⭐</span> Nota</button>
+                </div>
+
+                <!-- Tamaño y Vista (Agrupados para ahorrar espacio) -->
+                <div class="flex items-center glass-inset p-1 rounded-xl gap-1 shadow-inner shrink-0 ml-auto">
+                    <button data-size="small" class="size-btn px-3 py-1.5 rounded-lg text-[10px] font-bold transition-all bg-transparent text-gray-400 hover:bg-white/5">S</button>
+                    <button data-size="medium" class="size-btn px-3 py-1.5 rounded-lg text-[10px] font-bold transition-all bg-gradient-to-r from-indigo-500 to-purple-600 text-white shadow-md">M</button>
+                    <button data-size="large" class="size-btn px-3 py-1.5 rounded-lg text-[10px] font-bold transition-all bg-transparent text-gray-400 hover:bg-white/5">L</button>
+                    <div class="w-px h-4 bg-gray-700/80 mx-1"></div>
+                    <button id="btnViewGrid" class="layout-btn px-3 py-1.5 rounded-lg text-sm font-bold transition-all bg-gradient-to-r from-indigo-500 to-purple-600 text-white shadow-md">🔲</button>
+                    <button id="btnViewList" class="layout-btn px-3 py-1.5 rounded-lg text-sm font-bold transition-all bg-transparent text-gray-400 hover:bg-white/5">☰</button>
                 </div>
             </div>
 
@@ -174,40 +153,58 @@
         </div>
     </div>
 
-    <!-- MODAL DE DETALLE Y RECOMENDACIONES -->
-    <div id="modalDetalle" class="hidden fixed inset-0 bg-black/90 flex justify-center items-center p-4 z-50 backdrop-blur-sm">
-        <div class="bg-gray-800 rounded-3xl w-full max-w-2xl max-h-[90vh] flex flex-col shadow-2xl border border-gray-700 overflow-hidden">
+    <!-- MODAL DE DETALLE, CRÉDITOS Y RECOMENDACIONES -->
+    <div id="modalDetalle" class="hidden fixed inset-0 bg-black/90 flex justify-center items-center p-4 z-50 backdrop-blur-md transition-opacity">
+        <div class="bg-gray-800 rounded-3xl w-full max-w-3xl max-h-[90vh] flex flex-col shadow-2xl border border-gray-700 overflow-hidden">
             <div class="p-4 border-b border-gray-700 flex justify-between items-center bg-gray-800/80">
                 <span id="detailBadgeType" class="text-xs font-bold uppercase px-3 py-1 rounded-full bg-indigo-900/80 text-indigo-300 border border-indigo-700">Película</span>
-                <button onclick="cerrarModalDetalle()" class="text-gray-400 hover:text-white font-bold text-3xl leading-none">&times;</button>
+                <button onclick="cerrarModalDetalle()" class="text-gray-400 hover:text-white font-bold text-3xl leading-none" title="También puedes pulsar ESC">&times;</button>
             </div>
             <div class="p-6 overflow-y-auto custom-scrollbar flex flex-col">
                 <div class="flex flex-col md:flex-row gap-6 mb-6">
-                    <img id="detailPoster" src="" alt="" class="w-full md:w-48 h-auto object-cover rounded-2xl shadow-lg aspect-[2/3] flex-shrink-0">
+                    <img id="detailPoster" src="" alt="" class="w-full md:w-56 h-auto object-cover rounded-2xl shadow-lg aspect-[2/3] flex-shrink-0">
                     <div class="flex flex-col flex-grow">
-                        <h2 id="detailTitle" class="text-2xl font-bold text-white mb-2"></h2>
+                        <h2 id="detailTitle" class="text-2xl lg:text-3xl font-bold text-white mb-2"></h2>
                         <div class="flex flex-wrap items-center gap-3 text-sm text-gray-300 mb-4">
                             <span id="detailRating" class="bg-yellow-500/20 text-yellow-400 px-2.5 py-1 rounded-lg font-bold border border-yellow-500/30">⭐ 0.0</span>
                             <span id="detailSeasons" class="hidden bg-gray-700 px-2.5 py-1 rounded-lg font-semibold"></span>
                             <span id="detailStatus" class="hidden px-2.5 py-1 rounded-lg font-semibold"></span>
                         </div>
-                        <h3 class="text-xs font-bold uppercase text-gray-400 mb-1 tracking-wider">Sinopsis</h3>
-                        <p id="detailOverview" class="text-gray-300 text-sm leading-relaxed mb-6"></p>
-                        <div id="detailActions" class="mt-auto pt-4 border-t border-gray-700/80 flex flex-wrap gap-3"></div>
+                        <h3 class="text-xs font-black uppercase text-gray-500 mb-1 tracking-wider">Sinopsis</h3>
+                        <p id="detailOverview" class="text-gray-300 text-sm leading-relaxed mb-4"></p>
+                        
+                        <!-- NUEVA FICHA TÉCNICA (CRÉDITOS) -->
+                        <div id="detailCredits" class="flex flex-col gap-2 mt-2 p-4 bg-gray-900/50 rounded-2xl border border-gray-700/50"></div>
+
+                        <div id="detailActions" class="mt-auto pt-6 flex flex-wrap gap-3"></div>
                     </div>
                 </div>
 
                 <!-- RECOMENDACIONES -->
                 <div class="pt-4 border-t border-gray-700/80">
-                    <h3 class="text-[10px] font-bold uppercase text-gray-400 mb-3 tracking-wider">Recomendaciones similares</h3>
+                    <h3 class="text-[10px] font-black uppercase text-gray-500 mb-3 tracking-wider">Títulos similares</h3>
                     <div id="detailRecommendations" class="flex gap-3 overflow-x-auto custom-scrollbar pb-3"></div>
                 </div>
             </div>
         </div>
     </div>
 
+    <!-- NUEVO MODAL DE FILMOGRAFÍA (PERSONA) -->
+    <div id="modalPersona" class="hidden fixed inset-0 bg-black/95 flex justify-center items-center p-4 z-[60] backdrop-blur-sm">
+        <div class="bg-gray-900 rounded-3xl w-full max-w-4xl max-h-[85vh] flex flex-col shadow-2xl border border-gray-600">
+            <div class="p-4 border-b border-gray-700 flex justify-between items-center">
+                <h2 id="personaName" class="text-xl font-bold text-white flex items-center gap-2"><span class="text-indigo-400 text-2xl">👤</span> Nombre</h2>
+                <button onclick="cerrarModalPersona()" class="text-gray-400 hover:text-white font-bold text-3xl leading-none">&times;</button>
+            </div>
+            <div class="p-4 overflow-y-auto custom-scrollbar">
+                <h3 class="text-xs font-black uppercase text-gray-500 mb-4 tracking-wider pl-1">Trabajos Destacados</h3>
+                <div id="personaWorks" class="flex gap-4 overflow-x-auto pb-4 custom-scrollbar"></div>
+            </div>
+        </div>
+    </div>
+
     <!-- MODAL PARA EPISODIOS -->
-    <div id="modalEpisodios" class="hidden fixed inset-0 bg-black/90 flex justify-center items-center p-4 z-50 backdrop-blur-sm">
+    <div id="modalEpisodios" class="hidden fixed inset-0 bg-black/90 flex justify-center items-center p-4 z-50 backdrop-blur-md">
         <div class="bg-gray-800 rounded-3xl w-full max-w-2xl max-h-[85vh] flex flex-col shadow-2xl border border-gray-700">
             <div class="p-4 border-b border-gray-700 flex justify-between items-center gap-4 flex-wrap">
                 <h2 id="modalTitle" class="text-xl font-bold text-white line-clamp-1 flex-grow">Cargando...</h2>
