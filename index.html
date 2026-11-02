@@ -7,17 +7,7 @@
     <link rel="icon" href="data:image/svg+xml,<svg xmlns=%22http://www.w3.org/2000/svg%22 viewBox=%220 0 100 100%22><text y=%22.9em%22 font-size=%2290%22>🍿</text></svg>">
     <script src="https://cdn.tailwindcss.com"></script>
     <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
-    
-    <!-- NUEVO: Definición limpia de clases para evitar que JS rompa el diseño -->
-    <style type="text/tailwindcss">
-        @layer components {
-            .pill-active {
-                @apply px-3 py-1.5 rounded-xl text-xs font-bold transition-all bg-indigo-500 text-white shadow-md shadow-indigo-900/30;
-            }
-            .pill-inactive {
-                @apply px-3 py-1.5 rounded-xl text-xs font-bold transition-all bg-transparent text-gray-400 hover:text-gray-100 hover:bg-gray-700/50;
-            }
-        }
+    <style>
         body { background-color: #0f1115; }
         .custom-scrollbar::-webkit-scrollbar { width: 6px; height: 6px; }
         .custom-scrollbar::-webkit-scrollbar-thumb { background-color: #4B5563; border-radius: 10px; }
@@ -30,8 +20,10 @@
         
         <!-- HEADER Y NAVEGACIÓN -->
         <header class="mb-8 flex flex-col md:flex-row justify-between items-center glass-panel p-4 md:px-6 rounded-3xl shadow-2xl gap-4">
-            <h1 class="text-3xl md:text-4xl font-black text-transparent bg-clip-text bg-gradient-to-r from-indigo-400 to-purple-400 flex items-center gap-3 px-2">
-                <span class="text-3xl">🍿</span> PeliSeries
+            <!-- Título con el Emoji protegido de las transparencias -->
+            <h1 class="text-3xl md:text-4xl font-black flex items-center gap-3 px-2">
+                <span class="text-3xl">🍿</span> 
+                <span class="text-transparent bg-clip-text bg-gradient-to-r from-indigo-400 to-purple-400">PeliSeries</span>
             </h1>
             
             <div id="userLogged" class="hidden w-full md:w-auto flex flex-col md:flex-row items-center gap-4">
@@ -78,8 +70,8 @@
                 <div class="flex flex-col gap-1.5">
                     <span class="text-[10px] font-bold text-gray-500 uppercase tracking-widest pl-2">Ordenar resultados</span>
                     <div class="flex items-center glass-inset p-1.5 rounded-xl gap-1">
-                        <button data-search-sort="title" class="search-sort-btn pill-inactive">🔤 Título</button>
-                        <button data-search-sort="rating" class="search-sort-btn pill-active">⭐ Nota</button>
+                        <button data-search-sort="title" class="search-sort-btn px-3 py-1.5 rounded-xl text-xs font-bold bg-transparent text-gray-400 hover:bg-gray-700/50 transition-all">🔤 Título</button>
+                        <button data-search-sort="rating" class="search-sort-btn px-3 py-1.5 rounded-xl text-xs font-bold bg-indigo-500 text-white shadow-md transition-all">⭐ Nota</button>
                     </div>
                 </div>
             </div>
@@ -98,9 +90,9 @@
                     <div class="flex flex-col gap-2">
                         <span class="text-[10px] font-bold text-gray-400 uppercase tracking-widest pl-1">Categoría</span>
                         <div class="flex items-center glass-inset p-1.5 rounded-2xl gap-1">
-                            <button data-filter-type="all" class="filter-type-btn pill-active">Todos</button>
-                            <button data-filter-type="movie" class="filter-type-btn pill-inactive">🍿 Pelis</button>
-                            <button data-filter-type="tv" class="filter-type-btn pill-inactive">📺 Series</button>
+                            <button data-filter-type="all" class="filter-type-btn px-4 py-2 rounded-xl text-xs font-bold transition-all bg-indigo-500 text-white shadow-md shadow-indigo-900/30">Todos</button>
+                            <button data-filter-type="movie" class="filter-type-btn px-4 py-2 rounded-xl text-xs font-bold transition-all bg-transparent text-gray-400 hover:text-gray-100 hover:bg-gray-700/50">🍿 Pelis</button>
+                            <button data-filter-type="tv" class="filter-type-btn px-4 py-2 rounded-xl text-xs font-bold transition-all bg-transparent text-gray-400 hover:text-gray-100 hover:bg-gray-700/50">📺 Series</button>
                         </div>
                     </div>
 
@@ -108,10 +100,10 @@
                     <div class="flex flex-col gap-2">
                         <span class="text-[10px] font-bold text-gray-400 uppercase tracking-widest pl-1">Progreso</span>
                         <div class="flex items-center glass-inset p-1.5 rounded-2xl gap-1">
-                            <button data-filter-status="all" class="filter-status-btn pill-active">Todos</button>
-                            <button data-filter-status="pendiente" class="filter-status-btn pill-inactive">⏳ Ptes</button>
-                            <button data-filter-status="viendo" class="filter-status-btn pill-inactive">👀 Viendo</button>
-                            <button data-filter-status="vista" class="filter-status-btn pill-inactive">✅ Vistas</button>
+                            <button data-filter-status="all" class="filter-status-btn px-4 py-2 rounded-xl text-xs font-bold transition-all bg-indigo-500 text-white shadow-md shadow-indigo-900/30">Todos</button>
+                            <button data-filter-status="pendiente" class="filter-status-btn px-4 py-2 rounded-xl text-xs font-bold transition-all bg-transparent text-gray-400 hover:text-gray-100 hover:bg-gray-700/50">⏳ Ptes</button>
+                            <button data-filter-status="viendo" class="filter-status-btn px-4 py-2 rounded-xl text-xs font-bold transition-all bg-transparent text-gray-400 hover:text-gray-100 hover:bg-gray-700/50">👀 Viendo</button>
+                            <button data-filter-status="vista" class="filter-status-btn px-4 py-2 rounded-xl text-xs font-bold transition-all bg-transparent text-gray-400 hover:text-gray-100 hover:bg-gray-700/50">✅ Vistas</button>
                         </div>
                     </div>
 
@@ -119,9 +111,9 @@
                     <div class="flex flex-col gap-2">
                         <span class="text-[10px] font-bold text-gray-400 uppercase tracking-widest pl-1">Valoración</span>
                         <div class="flex items-center glass-inset p-1.5 rounded-2xl gap-1">
-                            <button data-filter-rating="0" class="filter-rating-btn pill-active">Todas</button>
-                            <button data-filter-rating="8" class="filter-rating-btn pill-inactive">⭐ 8+</button>
-                            <button data-filter-rating="6" class="filter-rating-btn pill-inactive">⭐ 6 - 8</button>
+                            <button data-filter-rating="0" class="filter-rating-btn px-4 py-2 rounded-xl text-xs font-bold transition-all bg-indigo-500 text-white shadow-md shadow-indigo-900/30">Todas</button>
+                            <button data-filter-rating="8" class="filter-rating-btn px-4 py-2 rounded-xl text-xs font-bold transition-all bg-transparent text-gray-400 hover:text-gray-100 hover:bg-gray-700/50">⭐ 8+</button>
+                            <button data-filter-rating="6" class="filter-rating-btn px-4 py-2 rounded-xl text-xs font-bold transition-all bg-transparent text-gray-400 hover:text-gray-100 hover:bg-gray-700/50">⭐ 6 - 8</button>
                         </div>
                     </div>
                 </div>
@@ -133,8 +125,8 @@
                     <div class="flex flex-col gap-2">
                         <span class="text-[10px] font-bold text-gray-400 uppercase tracking-widest pl-1">Ordenar por</span>
                         <div class="flex items-center glass-inset p-1.5 rounded-2xl gap-1">
-                            <button data-sort="title" class="sort-btn pill-inactive">🔤 A-Z</button>
-                            <button data-sort="rating" class="sort-btn pill-active">⭐ Nota</button>
+                            <button data-sort="title" class="sort-btn px-4 py-2 rounded-xl text-xs font-bold transition-all bg-transparent text-gray-400 hover:text-gray-100 hover:bg-gray-700/50">🔤 A-Z</button>
+                            <button data-sort="rating" class="sort-btn px-4 py-2 rounded-xl text-xs font-bold transition-all bg-indigo-500 text-white shadow-md shadow-indigo-900/30">⭐ Nota</button>
                         </div>
                     </div>
 
@@ -142,9 +134,9 @@
                     <div class="flex flex-col gap-2">
                         <span class="text-[10px] font-bold text-gray-400 uppercase tracking-widest pl-1">Póster</span>
                         <div class="flex items-center glass-inset p-1.5 rounded-2xl gap-1">
-                            <button data-size="small" class="size-btn pill-inactive">S</button>
-                            <button data-size="medium" class="size-btn pill-active">M</button>
-                            <button data-size="large" class="size-btn pill-inactive">L</button>
+                            <button data-size="small" class="size-btn px-4 py-2 rounded-xl text-xs font-bold transition-all bg-transparent text-gray-400 hover:text-gray-100 hover:bg-gray-700/50">S</button>
+                            <button data-size="medium" class="size-btn px-4 py-2 rounded-xl text-xs font-bold transition-all bg-indigo-500 text-white shadow-md shadow-indigo-900/30">M</button>
+                            <button data-size="large" class="size-btn px-4 py-2 rounded-xl text-xs font-bold transition-all bg-transparent text-gray-400 hover:text-gray-100 hover:bg-gray-700/50">L</button>
                         </div>
                     </div>
 
@@ -152,8 +144,8 @@
                     <div class="flex flex-col gap-2">
                         <span class="text-[10px] font-bold text-gray-400 uppercase tracking-widest pl-1">Vista</span>
                         <div class="flex items-center glass-inset p-1.5 rounded-2xl gap-1">
-                            <button id="btnViewGrid" title="Cuadrícula" class="layout-btn pill-active">🔲</button>
-                            <button id="btnViewList" title="Lista" class="layout-btn pill-inactive">☰</button>
+                            <button id="btnViewGrid" title="Cuadrícula" class="layout-btn px-4 py-2 rounded-xl text-xs font-bold transition-all bg-indigo-500 text-white shadow-md shadow-indigo-900/30">🔲</button>
+                            <button id="btnViewList" title="Lista" class="layout-btn px-4 py-2 rounded-xl text-xs font-bold transition-all bg-transparent text-gray-400 hover:text-gray-100 hover:bg-gray-700/50">☰</button>
                         </div>
                     </div>
                 </div>
