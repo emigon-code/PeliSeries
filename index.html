@@ -4,33 +4,39 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>PeliSeries</title>
-    <!-- Inyectamos Tailwind CSS -->
     <script src="https://cdn.tailwindcss.com"></script>
+    <!-- Importamos la librería de Supabase -->
+    <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
 </head>
 <body class="bg-gray-900 text-white min-h-screen p-6">
     <div class="max-w-5xl mx-auto">
         
-        <!-- Cabecera -->
-        <header class="mb-10 text-center mt-8">
+        <header class="mb-6 text-center mt-8">
             <h1 class="text-5xl font-bold text-indigo-500 mb-4">PeliSeries</h1>
-            <p class="text-gray-400 text-lg">Busca y gestiona tus películas y series favoritas</p>
         </header>
+
+        <!-- Panel de Autenticación -->
+        <div id="authPanel" class="max-w-md mx-auto mb-10 bg-gray-800 p-4 rounded-xl shadow-lg border border-gray-700">
+            <div id="loginForm" class="flex flex-col gap-3">
+                <input type="email" id="emailInput" placeholder="Tu correo de Supabase" class="p-3 rounded bg-gray-700 text-white focus:outline-none focus:ring-2 focus:ring-indigo-500">
+                <input type="password" id="passInput" placeholder="Contraseña" class="p-3 rounded bg-gray-700 text-white focus:outline-none focus:ring-2 focus:ring-indigo-500">
+                <button id="loginBtn" class="bg-indigo-600 hover:bg-indigo-500 py-3 rounded text-white font-bold transition-colors">Iniciar Sesión</button>
+            </div>
+            <div id="userLogged" class="hidden text-center">
+                <span class="text-green-400 font-bold flex items-center justify-center gap-2">
+                    <span>✅</span> Sesión iniciada
+                </span>
+            </div>
+        </div>
 
         <!-- Buscador -->
         <div class="flex gap-3 mb-10 max-w-2xl mx-auto">
             <input type="text" id="searchInput" placeholder="Ej. El Señor de los Anillos, Breaking Bad..." 
-                class="w-full p-4 rounded-xl bg-gray-800 border border-gray-700 focus:outline-none focus:border-indigo-500 text-white text-lg shadow-inner">
-            <button id="searchBtn" 
-                class="bg-indigo-600 hover:bg-indigo-500 px-8 py-4 rounded-xl font-bold text-lg transition-colors shadow-lg">
-                Buscar
-            </button>
+                class="w-full p-4 rounded-xl bg-gray-800 border border-gray-700 focus:outline-none focus:border-indigo-500 text-white text-lg">
+            <button id="searchBtn" class="bg-indigo-600 hover:bg-indigo-500 px-8 py-4 rounded-xl font-bold text-lg transition-colors">Buscar</button>
         </div>
 
-        <!-- Contenedor donde JS inyectará las tarjetas -->
-        <div id="resultsGrid" class="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5 gap-6">
-            <!-- Las tarjetas aparecerán aquí -->
-        </div>
-        
+        <div id="resultsGrid" class="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5 gap-6"></div>
     </div>
 
     <script src="app.js"></script>
