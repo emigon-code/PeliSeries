@@ -9,36 +9,49 @@
     <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
 </head>
 <body class="bg-gray-900 text-white min-h-screen p-6">
-    <div class="max-w-5xl mx-auto">
-        
-        <header class="mb-6 text-center mt-8">
-            <h1 class="text-5xl font-bold text-indigo-500 mb-4">PeliSeries</h1>
-        </header>
+   <div class="max-w-5xl mx-auto">
+    
+    <header class="mb-6 text-center mt-8">
+        <h1 class="text-5xl font-bold text-indigo-500 mb-4">PeliSeries</h1>
+    </header>
 
-        <!-- Panel de Autenticación -->
-        <div id="authPanel" class="max-w-md mx-auto mb-10 bg-gray-800 p-4 rounded-xl shadow-lg border border-gray-700">
-            <div id="loginForm" class="flex flex-col gap-3">
-                <input type="email" id="emailInput" placeholder="Tu correo de Supabase" class="p-3 rounded bg-gray-700 text-white focus:outline-none focus:ring-2 focus:ring-indigo-500">
-                <input type="password" id="passInput" placeholder="Contraseña" class="p-3 rounded bg-gray-700 text-white focus:outline-none focus:ring-2 focus:ring-indigo-500">
-                <button id="loginBtn" class="bg-indigo-600 hover:bg-indigo-500 py-3 rounded text-white font-bold transition-colors">Iniciar Sesión</button>
-            </div>
-            <div id="userLogged" class="hidden text-center">
-                <span class="text-green-400 font-bold flex items-center justify-center gap-2">
-                    <span>✅</span> Sesión iniciada
-                </span>
+    <!-- Panel de Autenticación -->
+    <div id="authPanel" class="max-w-md mx-auto mb-10 bg-gray-800 p-4 rounded-xl shadow-lg border border-gray-700">
+        <div id="loginForm" class="flex flex-col gap-3">
+            <input type="email" id="emailInput" placeholder="Tu correo de Supabase" class="p-3 rounded bg-gray-700 text-white focus:outline-none focus:ring-2 focus:ring-indigo-500">
+            <input type="password" id="passInput" placeholder="Contraseña" class="p-3 rounded bg-gray-700 text-white focus:outline-none focus:ring-2 focus:ring-indigo-500">
+            <button id="loginBtn" class="bg-indigo-600 hover:bg-indigo-500 py-3 rounded text-white font-bold transition-colors">Iniciar Sesión</button>
+        </div>
+        <div id="userLogged" class="hidden text-center">
+            <span class="text-green-400 font-bold flex items-center justify-center gap-2 mb-4">
+                <span>✅</span> Sesión iniciada
+            </span>
+            <!-- Navegación (Solo se ve si estás logueado) -->
+            <div class="flex justify-center gap-4">
+                <button id="btnNavSearch" class="bg-indigo-600 px-6 py-2 rounded-full font-bold text-white transition-colors">Buscador</button>
+                <button id="btnNavList" class="bg-gray-700 hover:bg-gray-600 px-6 py-2 rounded-full font-bold text-white transition-colors">Mi Lista</button>
             </div>
         </div>
+    </div>
 
-        <!-- Buscador -->
+    <!-- VISTA 1: BUSCADOR -->
+    <div id="viewSearch">
         <div class="flex gap-3 mb-10 max-w-2xl mx-auto">
             <input type="text" id="searchInput" placeholder="Ej. El Señor de los Anillos, Breaking Bad..." 
                 class="w-full p-4 rounded-xl bg-gray-800 border border-gray-700 focus:outline-none focus:border-indigo-500 text-white text-lg">
-            <button id="searchBtn" class="bg-indigo-600 hover:bg-indigo-500 px-8 py-4 rounded-xl font-bold text-lg transition-colors">Buscar</button>
+            <button id="searchBtn" class="bg-indigo-600 hover:bg-indigo-500 px-8 py-4 rounded-xl font-bold text-lg transition-colors text-white">Buscar</button>
         </div>
-
         <div id="resultsGrid" class="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5 gap-6"></div>
     </div>
 
-    <script src="app.js"></script>
+    <!-- VISTA 2: MI LISTA (Oculta por defecto) -->
+    <div id="viewList" class="hidden">
+        <h2 class="text-2xl font-bold mb-6 text-center text-gray-300">Lo que estoy siguiendo</h2>
+        <div id="myListGrid" class="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5 gap-6"></div>
+    </div>
+
+</div>
+
+<script src="app.js"></script>
 </body>
 </html>
