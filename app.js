@@ -1,17 +1,24 @@
-// 1. TUS CREDENCIALES (¡Rellena esto antes de hacer commit!)
+// 1. CREDENCIALES (Rellena antes de guardar)
 const TMDB_TOKEN = 'eyJhbGciOiJIUzI1NiJ9.eyJhdWQiOiJmNTIyNzVlMDVhNTAxMjllZWYwMGRhN2Q5ZmU5NTZlZSIsIm5iZiI6MTc5MzU1NjUzNC4wMDcsInN1YiI6IjZhZTc4MDM2MWMyNDI4MTQ4MmM4ZGM2NSIsInNjb3BlcyI6WyJhcGlfcmVhZCJdLCJ2ZXJzaW9uIjoxfQ.b2COQUX-mmBdGPcxwCTUN7HI5EN6KNemlZSzbaD5NuI'; 
 const SUPABASE_URL = 'https://dqqfoucxbsvfdshruygt.supabase.co';
 const SUPABASE_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImRxcWZvdWN4YnN2ZmRzaHJ1eWd0Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3OTM1NDgyOTQsImV4cCI6MjEwOTEyNDI5NH0.Z4yVjtuuSrs3Pc5AghHFVeENOvmIeA8k34iWcVQiqIQ';
 
 const clienteSupabase = window.supabase.createClient(SUPABASE_URL, SUPABASE_KEY);
 
-// VARIABLES GLOBALES Y DOM
+// ESTADOS GLOBALES DE LA APP
 let pelisYSeries = []; 
 let usuarioActual = null;
 let miListaTMDBIDs = []; 
+let miBibliotecaLocal = []; 
 let vistosTemporal = []; 
-let miBibliotecaLocal = []; // Almacena toda la lista para poder filtrarla sin recargar
 
+// Filtros y Diseño
+let currentFilterType = 'all';
+let currentFilterStatus = 'all';
+let currentLayoutMode = 'grid'; // 'grid' o 'list'
+let currentPosterSize = 'medium'; // 'small', 'medium', 'large'
+
+// ELEMENTOS DOM
 const searchInput = document.getElementById('searchInput');
 const searchBtn = document.getElementById('searchBtn');
 const resultsGrid = document.getElementById('resultsGrid');
@@ -26,14 +33,19 @@ const viewList = document.getElementById('viewList');
 const btnNavSearch = document.getElementById('btnNavSearch');
 const btnNavList = document.getElementById('btnNavList');
 const myListGrid = document.getElementById('myListGrid');
+
+// Modal de Detalle
+const modalDetalle = document.getElementById('modalDetalle');
+const detailPoster = document.getElementById('detailPoster');
+const detailTitle = document.getElementById('detailTitle');
+const detailBadgeType = document.getElementById('detailBadgeType');
+const detailRating = document.getElementById('detailRating');
+const detailSeasons = document.getElementById('detailSeasons');
+const detailStatus = document.getElementById('detailStatus');
+const detailOverview = document.getElementById('detailOverview');
+const detailActions = document.getElementById('detailActions');
 const modalEpisodios = document.getElementById('modalEpisodios');
 
-// Elementos de Filtro
-const filterType = document.getElementById('filterType');
-const filterStatus = document.getElementById('filterStatus');
-
-filterType.addEventListener('change', aplicarFiltros);
-filterStatus.addEventListener('change', aplicarFiltros);
 
 // --- AUTENTICACIÓN ---
 async function iniciarSesion() {
@@ -68,7 +80,7 @@ loginBtn.addEventListener('click', iniciarSesion);
 comprobarSesion();
 
 
-// --- NAVEGACIÓN ---
+// --- NAVEGACIÓN ENTRE VISTAS ---
 btnNavSearch.addEventListener('click', () => {
     viewSearch.classList.remove('hidden'); viewList.classList.add('hidden');
     btnNavSearch.classList.replace('bg-gray-700', 'bg-indigo-600');
@@ -84,7 +96,7 @@ btnNavList.addEventListener('click', () => {
 });
 
 
-// --- BUSCADOR ---
+// --- BÚSQUEDA TMDB ---
 async function buscarEnTMDB(query) {
     const url = `https://api.themoviedb.org/3/search/multi?query=${encodeURIComponent(query)}&language=es-ES&page=1`;
     try {
@@ -112,20 +124,26 @@ function renderResults(resultados) {
     resultados.forEach(item => {
         const titulo = item.title || item.name;
         const tipo = item.media_type === 'movie' ? 'Película' : 'Serie';
-        const imgUrl = item.poster_path ? `https://image.tmdb.org/t/p/w500${item.poster_path}` : 'https://via.placeholder.com/500x750/1f2937/ffffff?text=X';
-        
+        const imgUrl = item.poster_path ? `https://image.tmdb.org/t/p/w500${item.poster_path}` : 'https://via.placeholder.com/500x750/1f2937/ffffff?text=Sin+Poster';
+        const rating = item.vote_average ? item.vote_average.toFixed(1) : 'N/A';
+
         const yaLaTengo = miListaTMDBIDs.includes(item.id);
         const botonAñadir = yaLaTengo 
-            ? `<button disabled class="mt-auto w-full bg-green-900/50 text-green-400 py-2 rounded text-sm font-bold cursor-not-allowed border border-green-800">✓ En tu lista</button>`
-            : `<button class="mt-auto w-full bg-gray-700 hover:bg-gray-600 text-white py-2 rounded text-sm font-semibold transition-colors shadow" onclick="añadirALista(${item.id})">+ Añadir a mi lista</button>`;
+            ? `<button disabled class="mt-auto w-full bg-green-900/50 text-green-400 py-2 rounded-xl text-xs font-bold border border-green-800/80">✓ En tu lista</button>`
+            : `<button class="mt-auto w-full bg-gray-700 hover:bg-gray-600 text-white py-2 rounded-xl text-xs font-semibold transition-colors" onclick="event.stopPropagation(); añadirALista(${item.id})">+ Añadir a mi lista</button>`;
 
         const card = document.createElement('div');
-        card.className = 'bg-gray-800 rounded-xl overflow-hidden shadow flex flex-col';
+        card.className = 'bg-gray-800 rounded-2xl overflow-hidden shadow-lg hover:ring-2 hover:ring-indigo-500 transition-all flex flex-col cursor-pointer group relative';
+        card.onclick = () => abrirModalDetalleDesdeBusqueda(item.id);
+
         card.innerHTML = `
-            <img src="${imgUrl}" alt="${titulo}" class="w-full h-auto object-cover aspect-[2/3]">
-            <div class="p-4 flex flex-col flex-grow">
-                <span class="text-xs font-bold uppercase text-gray-400">${tipo}</span>
-                <h3 class="font-bold text-lg leading-tight mt-1 mb-4 line-clamp-2">${titulo}</h3>
+            <div class="relative aspect-[2/3] overflow-hidden bg-gray-900">
+                <img src="${imgUrl}" alt="${titulo}" class="w-full h-full object-cover group-hover:scale-105 transition-transform duration-300">
+                <span class="absolute top-2 right-2 bg-black/80 backdrop-blur-md text-yellow-400 text-xs font-bold px-2 py-1 rounded-lg border border-yellow-500/20">⭐ ${rating}</span>
+            </div>
+            <div class="p-3.5 flex flex-col flex-grow">
+                <span class="text-[10px] font-bold uppercase tracking-wider text-gray-400 mb-0.5">${tipo}</span>
+                <h3 class="font-bold text-sm leading-snug mb-3 line-clamp-2 group-hover:text-indigo-400 transition-colors">${titulo}</h3>
                 ${botonAñadir}
             </div>
         `;
@@ -134,7 +152,56 @@ function renderResults(resultados) {
 }
 
 
-// --- SUPABASE BÁSICOS ---
+// --- CONFIGURACIÓN DE FILTROS Y DISEÑO (BOTONES) ---
+document.querySelectorAll('.filter-type-btn').forEach(btn => {
+    btn.addEventListener('click', (e) => {
+        document.querySelectorAll('.filter-type-btn').forEach(b => b.className = 'filter-type-btn px-3 py-1.5 rounded-lg text-xs font-bold transition-all bg-gray-800 text-gray-300 hover:bg-gray-700');
+        e.target.className = 'filter-type-btn px-3 py-1.5 rounded-lg text-xs font-bold transition-all bg-indigo-600 text-white shadow';
+        currentFilterType = e.target.getAttribute('data-filter-type');
+        aplicarFiltrosYDiseño();
+    });
+});
+
+document.querySelectorAll('.filter-status-btn').forEach(btn => {
+    btn.addEventListener('click', (e) => {
+        document.querySelectorAll('.filter-status-btn').forEach(b => b.className = 'filter-status-btn px-3 py-1.5 rounded-lg text-xs font-bold transition-all bg-gray-800 text-gray-300 hover:bg-gray-700');
+        e.target.className = 'filter-status-btn px-3 py-1.5 rounded-lg text-xs font-bold transition-all bg-indigo-600 text-white shadow';
+        currentFilterStatus = e.target.getAttribute('data-filter-status');
+        aplicarFiltrosYDiseño();
+    });
+});
+
+document.querySelectorAll('.size-btn').forEach(btn => {
+    btn.addEventListener('click', (e) => {
+        document.querySelectorAll('.size-btn').forEach(b => b.className = 'size-btn px-2.5 py-1 rounded-lg text-xs font-bold bg-gray-800 text-gray-300 hover:bg-gray-700');
+        e.target.className = 'size-btn px-2.5 py-1 rounded-lg text-xs font-bold bg-indigo-600 text-white shadow';
+        currentPosterSize = e.target.getAttribute('data-size');
+        aplicarFiltrosYDiseño();
+    });
+});
+
+const btnViewGrid = document.getElementById('btnViewGrid');
+const btnViewList = document.getElementById('btnViewList');
+const posterSizeControls = document.getElementById('posterSizeControls');
+
+btnViewGrid.addEventListener('click', () => {
+    currentLayoutMode = 'grid';
+    btnViewGrid.className = 'p-1.5 rounded-lg text-sm bg-indigo-600 text-white shadow';
+    btnViewList.className = 'p-1.5 rounded-lg text-sm bg-gray-800 text-gray-300 hover:bg-gray-700';
+    posterSizeControls.classList.remove('hidden');
+    aplicarFiltrosYDiseño();
+});
+
+btnViewList.addEventListener('click', () => {
+    currentLayoutMode = 'list';
+    btnViewList.className = 'p-1.5 rounded-lg text-sm bg-indigo-600 text-white shadow';
+    btnViewGrid.className = 'p-1.5 rounded-lg text-sm bg-gray-800 text-gray-300 hover:bg-gray-700';
+    posterSizeControls.classList.add('hidden');
+    aplicarFiltrosYDiseño();
+});
+
+
+// --- BASE DE DATOS SUPABASE ---
 async function actualizarIdsLocales() {
     const { data } = await clienteSupabase.from('user_tracking').select('items(tmdb_id)').eq('user_id', usuarioActual.id);
     if (data) miListaTMDBIDs = data.map(d => d.items.tmdb_id);
@@ -156,18 +223,19 @@ async function añadirALista(tmdb_id) {
 }
 
 async function borrarDeMiLista(tracking_id, tmdb_id, titulo) {
-    if (confirm(`¿Eliminar "${titulo}" de tu biblioteca?`)) {
+    if (confirm(`¿Eliminar "${titulo}" de tu biblioteca personal?`)) {
         await clienteSupabase.from('user_tracking').delete().eq('id', tracking_id);
         miListaTMDBIDs = miListaTMDBIDs.filter(id => id !== tmdb_id);
+        cerrarModalDetalle();
         cargarMiLista(); 
     }
 }
 
 
-// --- PESTAÑA MI LISTA (CON FILTROS AUTOMÁTICOS) ---
+// --- PESTAÑA MI LISTA CON DETALLES EXTENDIDOS (TMDB) ---
 async function cargarMiLista() {
     if (!usuarioActual) return;
-    myListGrid.innerHTML = '<p class="text-indigo-400 col-span-full text-center">Cargando biblioteca...</p>';
+    myListGrid.innerHTML = '<p class="text-indigo-400 col-span-full text-center py-8">Cargando biblioteca personal...</p>';
 
     const { data, error } = await clienteSupabase.from('user_tracking')
         .select(`id, status, items ( id, tmdb_id, title, type, poster_path )`)
@@ -175,20 +243,40 @@ async function cargarMiLista() {
 
     if (error || data.length === 0) {
         miBibliotecaLocal = [];
-        return myListGrid.innerHTML = '<p class="text-gray-400 col-span-full text-center">Aún no has guardado nada.</p>';
+        return myListGrid.innerHTML = '<p class="text-gray-400 col-span-full text-center py-8">Aún no has guardado elementos.</p>';
     }
 
-    miBibliotecaLocal = data; // Guardamos en local para los filtros
-    aplicarFiltros();
+    // Traemos datos complementarios en paralelo de TMDB (puntuación, temporadas, estado emisión)
+    myListGrid.innerHTML = '<p class="text-indigo-400 col-span-full text-center py-8 animate-pulse">Obteniendo detalles actualizados...</p>';
+    
+    miBibliotecaLocal = await Promise.all(data.map(async (registro) => {
+        const item = registro.items;
+        try {
+            const endpoint = item.type === 'movie' ? `movie/${item.tmdb_id}` : `tv/${item.tmdb_id}`;
+            const res = await fetch(`https://api.themoviedb.org/3/${endpoint}?language=es-ES`, { headers: { Authorization: `Bearer ${TMDB_TOKEN}` } });
+            const tmdbData = await res.json();
+            
+            return {
+                ...registro,
+                details: {
+                    rating: tmdbData.vote_average ? tmdbData.vote_average.toFixed(1) : 'N/A',
+                    overview: tmdbData.overview || 'Sin descripción disponible.',
+                    seasons_count: tmdbData.number_of_seasons || 0,
+                    is_ended: tmdbData.status === 'Ended' || tmdbData.status === 'Canceled'
+                }
+            };
+        } catch(e) {
+            return { ...registro, details: { rating: 'N/A', overview: 'Sin datos.', seasons_count: 0, is_ended: false } };
+        }
+    }));
+
+    aplicarFiltrosYDiseño();
 }
 
-function aplicarFiltros() {
-    const typeValue = filterType.value;
-    const statusValue = filterStatus.value;
-
+function aplicarFiltrosYDiseño() {
     const dataFiltrada = miBibliotecaLocal.filter(registro => {
-        const matchType = typeValue === 'all' || registro.items.type === typeValue;
-        const matchStatus = statusValue === 'all' || registro.status === statusValue;
+        const matchType = currentFilterType === 'all' || registro.items.type === currentFilterType;
+        const matchStatus = currentFilterStatus === 'all' || registro.status === currentFilterStatus;
         return matchType && matchStatus;
     });
 
@@ -197,54 +285,166 @@ function aplicarFiltros() {
 
 function pintarMiLista(dataArray) {
     myListGrid.innerHTML = '';
-    if (dataArray.length === 0) return myListGrid.innerHTML = '<p class="text-gray-400 col-span-full text-center">No hay resultados para este filtro.</p>';
+    
+    // Ajustar clases del contenedor según el diseño
+    if (currentLayoutMode === 'list') {
+        myListGrid.className = 'flex flex-col gap-4';
+    } else {
+        let sizeClass = 'grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 gap-4 md:gap-6';
+        if (currentPosterSize === 'small') sizeClass = 'grid-cols-3 sm:grid-cols-4 md:grid-cols-6 lg:grid-cols-7 gap-3';
+        if (currentPosterSize === 'large') sizeClass = 'grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-6';
+        myListGrid.className = `grid ${sizeClass}`;
+    }
+
+    if (dataArray.length === 0) return myListGrid.innerHTML = '<p class="text-gray-400 col-span-full text-center py-8">No hay resultados que coincidan con los filtros.</p>';
 
     dataArray.forEach(registro => {
         const item = registro.items; 
-        const imgUrl = item.poster_path ? `https://image.tmdb.org/t/p/w500${item.poster_path}` : 'https://via.placeholder.com/500x750/1f2937/ffffff?text=X';
-        const tituloSeguro = item.title.replace(/'/g, "\\'");
-
-        const botonCapitulos = item.type === 'tv' 
-            ? `<button onclick="abrirModalSeries(${item.tmdb_id}, '${registro.id}', '${tituloSeguro}')" 
-                       class="mt-2 w-full bg-indigo-900 hover:bg-indigo-700 text-indigo-100 py-2 rounded text-sm font-semibold transition-colors">
-                 📋 Ver Capítulos
-               </button>` : '';
+        const details = registro.details;
+        const imgUrl = item.poster_path ? `https://image.tmdb.org/t/p/w500${item.poster_path}` : 'https://via.placeholder.com/500x750/1f2937/ffffff?text=Sin+Poster';
+        
+        // Etiqueta de Temporadas y Estado de la Serie
+        let badgeSerie = '';
+        if (item.type === 'tv') {
+            const estadoTexto = details.is_ended ? '🔴 Finalizada' : '🟢 En emisión';
+            badgeSerie = `<span class="text-[11px] text-gray-300 font-medium block mt-0.5">${details.seasons_count} Temp. • ${estadoTexto}</span>`;
+        }
 
         const card = document.createElement('div');
-        card.className = 'relative bg-gray-800 rounded-xl overflow-hidden shadow border border-gray-700 flex flex-col';
-        card.innerHTML = `
-            <button onclick="borrarDeMiLista('${registro.id}', ${item.tmdb_id}, '${tituloSeguro}')" 
-                    class="absolute top-2 right-2 bg-red-600/90 hover:bg-red-500 text-white w-8 h-8 rounded-full flex items-center justify-center transition-colors shadow-lg z-10" title="Eliminar">
-                &times;
-            </button>
-            <img src="${imgUrl}" alt="${item.title}" class="w-full h-auto object-cover aspect-[2/3]">
-            <div class="p-4 flex flex-col flex-grow">
-                <span class="text-xs font-bold uppercase text-gray-400">${item.type === 'movie' ? 'Película' : 'Serie'}</span>
-                <h3 class="font-bold text-lg leading-tight mt-1 mb-3 line-clamp-2">${item.title}</h3>
-                <div class="mt-auto">
-                    <!-- Pasamos el Select completo (this) para poder deshabilitarlo mientras guarda -->
-                    <select onchange="cambiarEstado(this, '${registro.id}', ${item.tmdb_id}, '${item.type}', '${tituloSeguro}')" 
-                            class="w-full mt-1 mb-2 bg-gray-700 text-white text-sm rounded p-2 focus:ring-indigo-500 border-none outline-none cursor-pointer">
-                        <option value="pendiente" ${registro.status === 'pendiente' ? 'selected' : ''}>Pendiente</option>
-                        <option value="viendo" ${registro.status === 'viendo' ? 'selected' : ''}>Viendo</option>
-                        <option value="vista" ${registro.status === 'vista' ? 'selected' : ''}>Vista</option>
-                    </select>
-                    ${botonCapitulos}
+        
+        // MODO LISTA (Horizontal)
+        if (currentLayoutMode === 'list') {
+            card.className = 'bg-gray-800 rounded-2xl overflow-hidden shadow border border-gray-700/80 flex flex-row items-center p-3 gap-4 hover:border-indigo-500 transition-all cursor-pointer';
+            card.onclick = () => abrirModalDetalleDesdeLista(registro.id);
+            
+            card.innerHTML = `
+                <img src="${imgUrl}" alt="${item.title}" class="w-20 sm:w-24 h-28 sm:h-36 object-cover rounded-xl flex-shrink-0 shadow">
+                <div class="flex flex-col flex-grow min-w-0">
+                    <div class="flex items-center gap-2 mb-1">
+                        <span class="text-[10px] font-bold uppercase tracking-wider px-2 py-0.5 rounded bg-gray-700 text-gray-300">${item.type === 'movie' ? 'Película' : 'Serie'}</span>
+                        <span class="text-xs font-bold text-yellow-400">⭐ ${details.rating}</span>
+                    </div>
+                    <h3 class="font-bold text-base sm:text-lg text-white truncate">${item.title}</h3>
+                    ${badgeSerie}
                 </div>
-            </div>
-        `;
+                <div class="flex flex-col gap-2 flex-shrink-0 min-w-[120px]" onclick="event.stopPropagation()">
+                    <select onchange="cambiarEstado(this, '${registro.id}', ${item.tmdb_id}, '${item.type}', '${item.title.replace(/'/g, "\\'")}')" 
+                            class="w-full bg-gray-700 text-white text-xs font-semibold rounded-xl p-2.5 focus:ring-2 focus:ring-indigo-500 border-none outline-none cursor-pointer">
+                        <option value="pendiente" ${registro.status === 'pendiente' ? 'selected' : ''}>⏳ Pendiente</option>
+                        <option value="viendo" ${registro.status === 'viendo' ? 'selected' : ''}>👀 Viendo</option>
+                        <option value="vista" ${registro.status === 'vista' ? 'selected' : ''}>✅ Vista</option>
+                    </select>
+                </div>
+            `;
+        } 
+        // MODO CUADRÍCULA (Grid)
+        else {
+            card.className = 'bg-gray-800 rounded-2xl overflow-hidden shadow border border-gray-700/80 flex flex-col hover:border-indigo-500 transition-all cursor-pointer group';
+            card.onclick = () => abrirModalDetalleDesdeLista(registro.id);
+            
+            card.innerHTML = `
+                <div class="relative aspect-[2/3] overflow-hidden bg-gray-900">
+                    <img src="${imgUrl}" alt="${item.title}" class="w-full h-full object-cover group-hover:scale-105 transition-transform duration-300">
+                    <span class="absolute top-2 right-2 bg-black/80 backdrop-blur-md text-yellow-400 text-xs font-bold px-2 py-1 rounded-lg border border-yellow-500/20">⭐ ${details.rating}</span>
+                </div>
+                <div class="p-3.5 flex flex-col flex-grow">
+                    <span class="text-[10px] font-bold uppercase text-gray-400 tracking-wider">${item.type === 'movie' ? 'Película' : 'Serie'}</span>
+                    <h3 class="font-bold text-sm leading-snug mt-0.5 mb-1 line-clamp-1 group-hover:text-indigo-400 transition-colors">${item.title}</h3>
+                    ${badgeSerie}
+                    <div class="mt-auto pt-3" onclick="event.stopPropagation()">
+                        <select onchange="cambiarEstado(this, '${registro.id}', ${item.tmdb_id}, '${item.type}', '${item.title.replace(/'/g, "\\'")}')" 
+                                class="w-full bg-gray-700 text-white text-xs font-semibold rounded-xl p-2.5 focus:ring-2 focus:ring-indigo-500 border-none outline-none cursor-pointer">
+                            <option value="pendiente" ${registro.status === 'pendiente' ? 'selected' : ''}>⏳ Pendiente</option>
+                            <option value="viendo" ${registro.status === 'viendo' ? 'selected' : ''}>👀 Viendo</option>
+                            <option value="vista" ${registro.status === 'vista' ? 'selected' : ''}>✅ Vista</option>
+                        </select>
+                    </div>
+                </div>
+            `;
+        }
         myListGrid.appendChild(card);
     });
 }
 
 
-// --- LÓGICA CORE: MARCAR SERIE COMPLETA Y ESTADOS ---
+// --- MODAL DE DETALLE / SINOPSIS ---
+function cerrarModalDetalle() { modalDetalle.classList.add('hidden'); }
+
+async function abrirModalDetalleDesdeBusqueda(tmdb_id) {
+    const item = pelisYSeries.find(i => i.id === tmdb_id);
+    if (!item) return;
+
+    modalDetalle.classList.remove('hidden');
+    detailTitle.textContent = item.title || item.name;
+    detailBadgeType.textContent = item.media_type === 'movie' ? 'Película' : 'Serie';
+    detailPoster.src = item.poster_path ? `https://image.tmdb.org/t/p/w500${item.poster_path}` : 'https://via.placeholder.com/500x750/1f2937/ffffff?text=Sin+Poster';
+    detailRating.textContent = `⭐ ${item.vote_average ? item.vote_average.toFixed(1) : 'N/A'}`;
+    detailOverview.textContent = item.overview || 'Sin descripción disponible en español.';
+
+    detailSeasons.classList.add('hidden');
+    detailStatus.classList.add('hidden');
+
+    if (item.media_type === 'tv') {
+        try {
+            const res = await fetch(`https://api.themoviedb.org/3/tv/${tmdb_id}?language=es-ES`, { headers: { Authorization: `Bearer ${TMDB_TOKEN}` } });
+            const data = await res.json();
+            detailSeasons.textContent = `${data.number_of_seasons} Temporadas`;
+            detailSeasons.classList.remove('hidden');
+            detailStatus.textContent = (data.status === 'Ended' || data.status === 'Canceled') ? '🔴 Finalizada' : '🟢 En emisión';
+            detailStatus.classList.remove('hidden');
+        } catch(e) {}
+    }
+
+    const yaLaTengo = miListaTMDBIDs.includes(item.id);
+    detailActions.innerHTML = yaLaTengo
+        ? `<button disabled class="w-full bg-green-900/50 text-green-400 py-3 rounded-xl text-sm font-bold border border-green-800">✓ Ya está en tu biblioteca</button>`
+        : `<button onclick="añadirALista(${item.id}); cerrarModalDetalle();" class="w-full bg-indigo-600 hover:bg-indigo-500 text-white py-3 rounded-xl text-sm font-bold transition-colors shadow">+ Añadir a mi lista</button>`;
+}
+
+function abrirModalDetalleDesdeLista(tracking_id) {
+    const registro = miBibliotecaLocal.find(r => r.id === tracking_id);
+    if (!registro) return;
+
+    const item = registro.items;
+    const details = registro.details;
+
+    modalDetalle.classList.remove('hidden');
+    detailTitle.textContent = item.title;
+    detailBadgeType.textContent = item.type === 'movie' ? 'Película' : 'Serie';
+    detailPoster.src = item.poster_path ? `https://image.tmdb.org/t/p/w500${item.poster_path}` : 'https://via.placeholder.com/500x750/1f2937/ffffff?text=Sin+Poster';
+    detailRating.textContent = `⭐ ${details.rating}`;
+    detailOverview.textContent = details.overview;
+
+    if (item.type === 'tv') {
+        detailSeasons.textContent = `${details.seasons_count} Temporadas`;
+        detailSeasons.classList.remove('hidden');
+        detailStatus.textContent = details.is_ended ? '🔴 Finalizada' : '🟢 En emisión';
+        detailStatus.classList.remove('hidden');
+    } else {
+        detailSeasons.classList.add('hidden');
+        detailStatus.classList.add('hidden');
+    }
+
+    const botonCapitulos = item.type === 'tv' 
+        ? `<button onclick="cerrarModalDetalle(); abrirModalSeries(${item.tmdb_id}, '${registro.id}', '${item.title.replace(/'/g, "\\'")}')" class="flex-grow bg-indigo-900 hover:bg-indigo-700 text-indigo-100 py-3 rounded-xl text-sm font-bold transition-colors">📋 Ver Capítulos</button>` 
+        : '';
+
+    // AQUÍ ESTÁ EL BOTÓN DE ELIMINAR PROTEGIDO DENTRO DE LA FICHA
+    detailActions.innerHTML = `
+        ${botonCapitulos}
+        <button onclick="borrarDeMiLista('${registro.id}', ${item.tmdb_id}, '${item.title.replace(/'/g, "\\'")}')" class="bg-red-600/20 hover:bg-red-600 text-red-400 hover:text-white border border-red-600/40 px-5 py-3 rounded-xl text-sm font-bold transition-colors flex items-center justify-center gap-2">
+            🗑️ Eliminar de mi lista
+        </button>
+    `;
+}
+
+
+// --- CAMBIO DE ESTADO Y SERIE COMPLETA ---
 async function procesarSerieCompletaBBDD(tracking_id, tmdb_id) {
     try {
         const res = await fetch(`https://api.themoviedb.org/3/tv/${tmdb_id}?language=es-ES`, { headers: { Authorization: `Bearer ${TMDB_TOKEN}` } });
         const serieData = await res.json();
 
-        // Borramos primero todo rastro antiguo para evitar duplicados
         await clienteSupabase.from('user_episodes').delete().eq('tracking_id', tracking_id);
         
         const inserts = [];
@@ -252,49 +452,45 @@ async function procesarSerieCompletaBBDD(tracking_id, tmdb_id) {
             for(let i = 1; i <= temp.episode_count; i++) inserts.push({ tracking_id, season_number: temp.season_number, episode_number: i });
         });
         
-        // Insertamos en bloques de 500 para evitar que Supabase bloquee la petición en series súper largas (ej. One Piece)
         for (let i = 0; i < inserts.length; i += 500) {
             await clienteSupabase.from('user_episodes').insert(inserts.slice(i, i + 500));
         }
         return true;
-    } catch(e) { console.error("Fallo BBDD serie:", e); return false; }
+    } catch(e) { return false; }
 }
 
 async function cambiarEstado(selectElement, tracking_id, tmdb_id, tipo, titulo) {
     const nuevoEstado = selectElement.value;
-    selectElement.disabled = true; // Bloqueamos el select mientras piensa
+    selectElement.disabled = true;
 
-    // MAGIA NUEVA: Si marcas una serie como Vista desde la tarjeta principal
     if (nuevoEstado === 'vista' && tipo === 'tv') {
-        if (confirm(`Al marcar la serie "${titulo}" como Vista, se marcarán automáticamente todos sus capítulos. ¿Deseas continuar?`)) {
+        if (confirm(`Al marcar "${titulo}" como Vista, se marcarán automáticamente todos sus capítulos. ¿Deseas continuar?`)) {
             await procesarSerieCompletaBBDD(tracking_id, tmdb_id);
         } else {
-            cargarMiLista(); // Si el usuario cancela, recargamos para devolver el select a su estado original
+            cargarMiLista();
             return; 
         }
     }
 
     await clienteSupabase.from('user_tracking').update({ status: nuevoEstado }).eq('id', tracking_id);
     
-    // Actualizar la variable local para que los filtros funcionen sin recargar la BBDD
     const index = miBibliotecaLocal.findIndex(r => r.id === tracking_id);
     if(index > -1) miBibliotecaLocal[index].status = nuevoEstado;
     
     selectElement.disabled = false;
-    aplicarFiltros(); // Refresca visualmente la lista (por si estás filtrando por pendientes y acabas de ponerla a vista)
+    aplicarFiltrosYDiseño();
 }
 
 
-// --- MODAL DE ACORDEONES ---
+// --- MODAL DE EPISODIOS Y ACORDEONES ---
 function cerrarModal() { modalEpisodios.classList.add('hidden'); }
 
 async function abrirModalSeries(tmdb_id, tracking_id, titulo) {
     modalEpisodios.classList.remove('hidden');
     document.getElementById('modalTitle').textContent = titulo;
     const modalContent = document.getElementById('modalContent');
-    modalContent.innerHTML = '<p class="text-center text-indigo-400">Cargando...</p>';
+    modalContent.innerHTML = '<p class="text-center text-indigo-400 py-6">Cargando episodios...</p>';
 
-    // Botón Global de la cabecera
     const btnMarcarSerie = document.getElementById('btnMarcarSerie');
     btnMarcarSerie.textContent = "✓ Marcar serie completa";
     btnMarcarSerie.disabled = false;
@@ -318,27 +514,24 @@ async function abrirModalSeries(tmdb_id, tracking_id, titulo) {
         modalContent.innerHTML = '';
         serieData.seasons.filter(t => t.season_number > 0).forEach(temp => {
             modalContent.innerHTML += `
-                <div class="mb-3 border border-gray-700 rounded overflow-hidden shadow-sm">
-                    <div class="w-full bg-gray-700 flex flex-wrap sm:flex-nowrap justify-between items-stretch">
-                        
+                <div class="mb-3 border border-gray-700/80 rounded-2xl overflow-hidden shadow-sm">
+                    <div class="w-full bg-gray-700/70 flex flex-wrap sm:flex-nowrap justify-between items-stretch">
                         <button onclick="cargarEpisodios(this.parentElement, ${tmdb_id}, ${temp.season_number}, '${tracking_id}')" 
                                 class="flex-grow p-4 text-left font-bold text-white hover:bg-gray-600 flex items-center gap-3 transition-colors">
                             Temp. ${temp.season_number} 
-                            <span class="text-xs font-normal bg-gray-800 px-2 py-1 rounded text-gray-300">${temp.episode_count} cap.</span>
+                            <span class="text-xs font-normal bg-gray-800/80 px-2.5 py-1 rounded-lg text-gray-300 border border-gray-600/50">${temp.episode_count} cap.</span>
                         </button>
                         
-                        <!-- BOTÓN MARCAR TEMPORADA (Rediseñado para ser muy visible) -->
                         <button onclick="marcarTemporadaCompleta('${tracking_id}', ${temp.season_number}, ${temp.episode_count}, this)" 
-                                class="px-6 py-3 bg-green-900/40 text-green-400 hover:bg-green-600 hover:text-white font-bold text-sm border-l border-gray-600 transition-all flex items-center justify-center">
+                                class="px-5 py-3 bg-green-900/40 text-green-400 hover:bg-green-600 hover:text-white font-bold text-xs sm:text-sm border-l border-gray-600/60 transition-all flex items-center justify-center">
                             ✓ Temporada Vista
                         </button>
-
                     </div>
-                    <div class="capitulos-container hidden p-2 bg-gray-900 flex flex-col gap-1"></div>
+                    <div class="capitulos-container hidden p-2 bg-gray-900/90 flex flex-col gap-1"></div>
                 </div>
             `;
         });
-    } catch(e) { modalContent.innerHTML = '<p class="text-red-400 text-center">Error al cargar.</p>'; }
+    } catch(e) { modalContent.innerHTML = '<p class="text-red-400 text-center">Error al cargar episodios.</p>'; }
 }
 
 async function cargarEpisodios(cabeceraDiv, tmdb_id, season_number, tracking_id) {
@@ -346,7 +539,7 @@ async function cargarEpisodios(cabeceraDiv, tmdb_id, season_number, tracking_id)
     if (contenedor.innerHTML !== '') { contenedor.classList.toggle('hidden'); return; }
     
     contenedor.classList.remove('hidden');
-    contenedor.innerHTML = '<p class="text-sm text-gray-400 p-2">Buscando capítulos...</p>';
+    contenedor.innerHTML = '<p class="text-sm text-gray-400 p-3">Buscando capítulos...</p>';
 
     const res = await fetch(`https://api.themoviedb.org/3/tv/${tmdb_id}/season/${season_number}?language=es-ES`, { headers: { Authorization: `Bearer ${TMDB_TOKEN}` } });
     const data = await res.json();
@@ -356,13 +549,13 @@ async function cargarEpisodios(cabeceraDiv, tmdb_id, season_number, tracking_id)
         const estaVisto = vistosTemporal.some(v => v.season_number === season_number && v.episode_number === ep.episode_number);
         
         contenedor.innerHTML += `
-            <div class="flex items-center gap-3 p-3 hover:bg-gray-800 rounded transition-colors border-b border-gray-800 last:border-0">
+            <div class="flex items-center gap-3 p-3 hover:bg-gray-800/80 rounded-xl transition-colors border-b border-gray-800/60 last:border-0">
                 <input type="checkbox" id="ep-${ep.id}" ${estaVisto ? 'checked' : ''} 
                        onchange="marcarCapitulo('${tracking_id}', ${season_number}, ${ep.episode_number}, this.checked)"
                        class="peer w-5 h-5 accent-indigo-500 rounded cursor-pointer flex-shrink-0">
                 <label for="ep-${ep.id}" class="cursor-pointer flex items-center gap-2 flex-grow">
-                    <span class="text-sm font-semibold text-gray-500 w-6 flex-shrink-0">${ep.episode_number}.</span>
-                    <span class="text-sm text-gray-200 line-clamp-1 peer-checked:line-through peer-checked:text-gray-600 transition-all">${ep.name}</span>
+                    <span class="text-xs font-semibold text-gray-500 w-6 flex-shrink-0">${ep.episode_number}.</span>
+                    <span class="text-sm text-gray-200 line-clamp-1 peer-checked:line-through peer-checked:text-gray-500 transition-all">${ep.name}</span>
                 </label>
             </div>
         `;
