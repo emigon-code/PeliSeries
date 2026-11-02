@@ -15,7 +15,7 @@ let vistosTemporal = [];
 // Filtros y Diseño
 let currentFilterType = 'all';
 let currentFilterStatus = 'all';
-let currentFilterRating = 0; // NUEVO: 0 = Todas, 6 = 6+, 8 = 8+
+let currentFilterRating = 0; // 0 = Todas, 6 = (6 a 7.9), 8 = 8+
 let currentLayoutMode = 'grid'; 
 let currentPosterSize = 'medium'; 
 
@@ -35,13 +35,11 @@ const btnNavSearch = document.getElementById('btnNavSearch');
 const btnNavList = document.getElementById('btnNavList');
 const myListGrid = document.getElementById('myListGrid');
 
-// Modal de Importación
 const modalImport = document.getElementById('modalImport');
 const importTextarea = document.getElementById('importTextarea');
 const importStatus = document.getElementById('importStatus');
 const btnProcesarImport = document.getElementById('btnProcesarImport');
 
-// Modal de Detalle
 const modalDetalle = document.getElementById('modalDetalle');
 const detailPoster = document.getElementById('detailPoster');
 const detailTitle = document.getElementById('detailTitle');
@@ -72,7 +70,7 @@ async function postLoginSetup() {
     loginForm.classList.add('hidden');
     userLogged.classList.remove('hidden');
     await actualizarIdsLocales(); 
-    btnNavList.click(); // INICIO POR DEFECTO: Fuerza el clic para entrar en "Mi Lista"
+    btnNavList.click(); // Inicia en Mi Lista
 }
 
 logoutBtn.addEventListener('click', async () => {
@@ -80,7 +78,7 @@ logoutBtn.addEventListener('click', async () => {
     usuarioActual = null; miListaTMDBIDs = []; miBibliotecaLocal = [];
     userLogged.classList.add('hidden'); loginForm.classList.remove('hidden');
     emailInput.value = ''; passInput.value = '';
-    btnNavList.click(); // Al salir de sesión limpia y vuelve a Mi Lista (que mostrará "Aún no has guardado")
+    btnNavList.click(); 
     resultsGrid.innerHTML = ''; myListGrid.innerHTML = '';
 });
 
@@ -88,7 +86,7 @@ loginBtn.addEventListener('click', iniciarSesion);
 comprobarSesion();
 
 
-// --- NAVEGACIÓN ENTRE VISTAS ---
+// --- NAVEGACIÓN ---
 btnNavSearch.addEventListener('click', () => {
     viewSearch.classList.remove('hidden'); viewList.classList.add('hidden');
     btnNavSearch.classList.replace('bg-gray-700', 'bg-indigo-600');
@@ -104,7 +102,7 @@ btnNavList.addEventListener('click', () => {
 });
 
 
-// --- IMPORTACIÓN MASIVA (NUEVO) ---
+// --- IMPORTACIÓN MASIVA ---
 function abrirModalImportacion() {
     if (!usuarioActual) return alert("¡Inicia sesión primero!");
     modalImport.classList.remove('hidden');
@@ -126,20 +124,17 @@ async function procesarImportacion() {
     btnProcesarImport.classList.add('opacity-50');
     importStatus.classList.remove('hidden');
     
-    let procesados = 0;
-    let encontrados = 0;
+    let procesados = 0, encontrados = 0;
 
     for (const titulo of lineas) {
         importStatus.textContent = `Buscando "${titulo}" (${procesados + 1}/${lineas.length})...`;
-        
         try {
             const res = await fetch(`https://api.themoviedb.org/3/search/multi?query=${encodeURIComponent(titulo)}&language=es-ES&page=1`, { headers: { Authorization: `Bearer ${TMDB_TOKEN}` } });
             const data = await res.json();
             const resultadosValidos = data.results.filter(item => item.media_type === 'movie' || item.media_type === 'tv');
             
             if (resultadosValidos.length > 0) {
-                const item = resultadosValidos[0]; // Nos quedamos con el mejor resultado
-                
+                const item = resultadosValidos[0]; 
                 if (!miListaTMDBIDs.includes(item.id)) {
                     await clienteSupabase.from('items').insert({ tmdb_id: item.id, title: item.title || item.name, type: item.media_type, poster_path: item.poster_path });
                     const { data: dbItem } = await clienteSupabase.from('items').select('id').eq('tmdb_id', item.id).eq('type', item.media_type).single();
@@ -150,18 +145,14 @@ async function procesarImportacion() {
                 }
             }
         } catch(e) { console.error(`Error con ${titulo}:`, e); }
-        
         procesados++;
     }
     
-    importStatus.textContent = `¡Importación completada! Se añadieron ${encontrados} títulos nuevos a tu lista.`;
+    importStatus.textContent = `¡Importación completada! Se añadieron ${encontrados} títulos.`;
     btnProcesarImport.textContent = "Cerrar y ver mi lista";
     btnProcesarImport.disabled = false;
     btnProcesarImport.classList.remove('opacity-50');
-    btnProcesarImport.onclick = () => {
-        cerrarModalImportacion();
-        cargarMiLista(); // Recargar la lista principal para ver las novedades
-    };
+    btnProcesarImport.onclick = () => { cerrarModalImportacion(); cargarMiLista(); };
 }
 
 
@@ -221,7 +212,7 @@ function renderResults(resultados) {
 }
 
 
-// --- CONFIGURACIÓN DE FILTROS Y DISEÑO (BOTONES) ---
+// --- CONFIGURACIÓN DE FILTROS Y DISEÑO ---
 document.querySelectorAll('.filter-type-btn').forEach(btn => {
     btn.addEventListener('click', (e) => {
         document.querySelectorAll('.filter-type-btn').forEach(b => b.className = 'filter-type-btn px-3 py-1.5 rounded-lg text-xs font-bold transition-all bg-gray-800 text-gray-300 hover:bg-gray-700');
@@ -240,7 +231,6 @@ document.querySelectorAll('.filter-status-btn').forEach(btn => {
     });
 });
 
-// NUEVO: Filtros de Valoración
 document.querySelectorAll('.filter-rating-btn').forEach(btn => {
     btn.addEventListener('click', (e) => {
         document.querySelectorAll('.filter-rating-btn').forEach(b => b.className = 'filter-rating-btn px-3 py-1.5 rounded-lg text-xs font-bold transition-all bg-gray-800 text-gray-300 hover:bg-gray-700');
@@ -261,13 +251,12 @@ document.querySelectorAll('.size-btn').forEach(btn => {
 
 const btnViewGrid = document.getElementById('btnViewGrid');
 const btnViewList = document.getElementById('btnViewList');
-const posterSizeControls = document.getElementById('posterSizeControls');
+const posterSizeControls = document.getElementById('posterSizeControls'); // Ya no lo ocultamos en vista lista
 
 btnViewGrid.addEventListener('click', () => {
     currentLayoutMode = 'grid';
     btnViewGrid.className = 'p-1.5 rounded-lg text-sm bg-indigo-600 text-white shadow';
     btnViewList.className = 'p-1.5 rounded-lg text-sm bg-gray-800 text-gray-300 hover:bg-gray-700';
-    posterSizeControls.classList.remove('hidden');
     aplicarFiltrosYDiseño();
 });
 
@@ -275,7 +264,6 @@ btnViewList.addEventListener('click', () => {
     currentLayoutMode = 'list';
     btnViewList.className = 'p-1.5 rounded-lg text-sm bg-indigo-600 text-white shadow';
     btnViewGrid.className = 'p-1.5 rounded-lg text-sm bg-gray-800 text-gray-300 hover:bg-gray-700';
-    posterSizeControls.classList.add('hidden');
     aplicarFiltrosYDiseño();
 });
 
@@ -293,12 +281,10 @@ async function añadirALista(tmdb_id) {
 
     await clienteSupabase.from('items').insert({ tmdb_id: item.id, title: titulo, type: item.media_type, poster_path: item.poster_path });
     const { data: dbItem } = await clienteSupabase.from('items').select('id').eq('tmdb_id', item.id).eq('type', item.media_type).single();
-    const { error } = await clienteSupabase.from('user_tracking').insert({ user_id: usuarioActual.id, item_id: dbItem.id, status: 'pendiente' });
+    await clienteSupabase.from('user_tracking').insert({ user_id: usuarioActual.id, item_id: dbItem.id, status: 'pendiente' });
 
-    if (!error) {
-        miListaTMDBIDs.push(item.id); 
-        renderResults(pelisYSeries);  
-    }
+    miListaTMDBIDs.push(item.id); 
+    renderResults(pelisYSeries);  
 }
 
 async function borrarDeMiLista(tracking_id, tmdb_id, titulo) {
@@ -356,11 +342,14 @@ function aplicarFiltrosYDiseño() {
         const matchType = currentFilterType === 'all' || registro.items.type === currentFilterType;
         const matchStatus = currentFilterStatus === 'all' || registro.status === currentFilterStatus;
         
-        // Comprobar filtro de nota
         let matchRating = true;
-        if (currentFilterRating > 0) {
+        if (currentFilterRating === 8) {
             const r = parseFloat(registro.details.rating);
-            if (isNaN(r) || r < currentFilterRating) matchRating = false;
+            if (isNaN(r) || r < 8) matchRating = false;
+        } else if (currentFilterRating === 6) {
+            const r = parseFloat(registro.details.rating);
+            // Lógica exacta: Entre 6 y 7.9
+            if (isNaN(r) || r < 6 || r >= 8) matchRating = false;
         }
 
         return matchType && matchStatus && matchRating;
@@ -372,12 +361,17 @@ function aplicarFiltrosYDiseño() {
 function pintarMiLista(dataArray) {
     myListGrid.innerHTML = '';
     
+    // DEFINICIÓN DE TAMAÑOS REDUCIDOS
     if (currentLayoutMode === 'list') {
-        myListGrid.className = 'flex flex-col gap-4';
+        myListGrid.className = 'flex flex-col gap-3 md:gap-4';
     } else {
-        let sizeClass = 'grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 gap-4 md:gap-6';
-        if (currentPosterSize === 'small') sizeClass = 'grid-cols-3 sm:grid-cols-4 md:grid-cols-6 lg:grid-cols-7 gap-3';
-        if (currentPosterSize === 'large') sizeClass = 'grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-6';
+        // TAMAÑOS DE GRID (Escalados hacia abajo)
+        // Pequeño (Nuevo extra pequeño): cols 4 a 8
+        // Mediano (Antiguo pequeño): cols 3 a 7
+        // Grande (Antiguo mediano): cols 2 a 5
+        let sizeClass = 'grid-cols-3 sm:grid-cols-4 md:grid-cols-6 lg:grid-cols-7 gap-3 md:gap-4'; // Medium
+        if (currentPosterSize === 'small') sizeClass = 'grid-cols-4 sm:grid-cols-5 md:grid-cols-7 lg:grid-cols-8 gap-2 md:gap-3';
+        if (currentPosterSize === 'large') sizeClass = 'grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 gap-4 md:gap-6';
         myListGrid.className = `grid ${sizeClass}`;
     }
 
@@ -397,18 +391,31 @@ function pintarMiLista(dataArray) {
         const card = document.createElement('div');
         
         if (currentLayoutMode === 'list') {
-            card.className = 'bg-gray-800 rounded-2xl overflow-hidden shadow border border-gray-700/80 flex flex-row items-center p-3 gap-4 hover:border-indigo-500 transition-all cursor-pointer';
+            // TAMAÑOS PARA VISTA LISTA
+            let listImgClasses = 'w-20 sm:w-24 h-28 sm:h-36'; // Medium
+            let listTitleClasses = 'text-base sm:text-lg';
+            if (currentPosterSize === 'small') {
+                listImgClasses = 'w-16 sm:w-20 h-24 sm:h-28';
+                listTitleClasses = 'text-sm sm:text-base';
+            } else if (currentPosterSize === 'large') {
+                listImgClasses = 'w-24 sm:w-32 h-36 sm:h-48';
+                listTitleClasses = 'text-lg sm:text-xl';
+            }
+
+            card.className = 'bg-gray-800 rounded-2xl overflow-hidden shadow border border-gray-700/80 flex flex-row items-center p-3 md:p-4 gap-4 hover:border-indigo-500 transition-all cursor-pointer';
             card.onclick = () => abrirModalDetalleDesdeLista(registro.id);
             
             card.innerHTML = `
-                <img src="${imgUrl}" alt="${item.title}" class="w-20 sm:w-24 h-28 sm:h-36 object-cover rounded-xl flex-shrink-0 shadow">
+                <img src="${imgUrl}" alt="${item.title}" class="${listImgClasses} object-cover rounded-xl flex-shrink-0 shadow">
                 <div class="flex flex-col flex-grow min-w-0">
                     <div class="flex items-center gap-2 mb-1">
                         <span class="text-[10px] font-bold uppercase tracking-wider px-2 py-0.5 rounded bg-gray-700 text-gray-300">${item.type === 'movie' ? 'Película' : 'Serie'}</span>
                         <span class="text-xs font-bold text-yellow-400">⭐ ${details.rating}</span>
                     </div>
-                    <h3 class="font-bold text-base sm:text-lg text-white truncate">${item.title}</h3>
+                    <h3 class="font-bold ${listTitleClasses} text-white truncate">${item.title}</h3>
                     ${badgeSerie}
+                    <!-- NUEVO: Sinopsis en vista lista -->
+                    <p class="text-xs text-gray-400 mt-2 line-clamp-2 hidden sm:block">${details.overview}</p>
                 </div>
                 <div class="flex flex-col gap-2 flex-shrink-0 min-w-[120px]" onclick="event.stopPropagation()">
                     <select onchange="cambiarEstado(this, '${registro.id}', ${item.tmdb_id}, '${item.type}', '${item.title.replace(/'/g, "\\'")}')" 
@@ -420,6 +427,11 @@ function pintarMiLista(dataArray) {
                 </div>
             `;
         } else {
+            // Ajustes de fuente para los grid más pequeños
+            let titleClass = 'text-sm';
+            let typeClass = 'text-[10px]';
+            if (currentPosterSize === 'small') { titleClass = 'text-xs'; typeClass = 'text-[9px]'; }
+
             card.className = 'bg-gray-800 rounded-2xl overflow-hidden shadow border border-gray-700/80 flex flex-col hover:border-indigo-500 transition-all cursor-pointer group';
             card.onclick = () => abrirModalDetalleDesdeLista(registro.id);
             
@@ -428,9 +440,9 @@ function pintarMiLista(dataArray) {
                     <img src="${imgUrl}" alt="${item.title}" class="w-full h-full object-cover group-hover:scale-105 transition-transform duration-300">
                     <span class="absolute top-2 right-2 bg-black/80 backdrop-blur-md text-yellow-400 text-xs font-bold px-2 py-1 rounded-lg border border-yellow-500/20">⭐ ${details.rating}</span>
                 </div>
-                <div class="p-3.5 flex flex-col flex-grow">
-                    <span class="text-[10px] font-bold uppercase text-gray-400 tracking-wider">${item.type === 'movie' ? 'Película' : 'Serie'}</span>
-                    <h3 class="font-bold text-sm leading-snug mt-0.5 mb-1 line-clamp-1 group-hover:text-indigo-400 transition-colors">${item.title}</h3>
+                <div class="p-3 flex flex-col flex-grow">
+                    <span class="${typeClass} font-bold uppercase text-gray-400 tracking-wider mb-0.5">${item.type === 'movie' ? 'Película' : 'Serie'}</span>
+                    <h3 class="font-bold ${titleClass} leading-snug mt-0.5 mb-1 line-clamp-2 group-hover:text-indigo-400 transition-colors">${item.title}</h3>
                     ${badgeSerie}
                     <div class="mt-auto pt-3" onclick="event.stopPropagation()">
                         <select onchange="cambiarEstado(this, '${registro.id}', ${item.tmdb_id}, '${item.type}', '${item.title.replace(/'/g, "\\'")}')" 
@@ -524,14 +536,11 @@ async function procesarSerieCompletaBBDD(tracking_id, tmdb_id) {
     try {
         const res = await fetch(`https://api.themoviedb.org/3/tv/${tmdb_id}?language=es-ES`, { headers: { Authorization: `Bearer ${TMDB_TOKEN}` } });
         const serieData = await res.json();
-
         await clienteSupabase.from('user_episodes').delete().eq('tracking_id', tracking_id);
-        
         const inserts = [];
         serieData.seasons.filter(t => t.season_number > 0).forEach(temp => {
             for(let i = 1; i <= temp.episode_count; i++) inserts.push({ tracking_id, season_number: temp.season_number, episode_number: i });
         });
-        
         for (let i = 0; i < inserts.length; i += 500) {
             await clienteSupabase.from('user_episodes').insert(inserts.slice(i, i + 500));
         }
@@ -553,10 +562,8 @@ async function cambiarEstado(selectElement, tracking_id, tmdb_id, tipo, titulo) 
     }
 
     await clienteSupabase.from('user_tracking').update({ status: nuevoEstado }).eq('id', tracking_id);
-    
     const index = miBibliotecaLocal.findIndex(r => r.id === tracking_id);
     if(index > -1) miBibliotecaLocal[index].status = nuevoEstado;
-    
     selectElement.disabled = false;
     aplicarFiltrosYDiseño();
 }
@@ -593,18 +600,33 @@ async function abrirModalSeries(tmdb_id, tracking_id, titulo) {
 
         modalContent.innerHTML = '';
         serieData.seasons.filter(t => t.season_number > 0).forEach(temp => {
+            
+            // LÓGICA DE ESTADOS POR TEMPORADA
+            const vistosDeTemp = vistosTemporal.filter(v => v.season_number === temp.season_number).length;
+            const totalDeTemp = temp.episode_count;
+            
+            let estadoTemp = '<span class="text-gray-400 text-xs font-normal px-2 bg-gray-800 rounded border border-gray-700">⏳ Pendiente</span>';
+            if (vistosDeTemp > 0 && vistosDeTemp < totalDeTemp) {
+                estadoTemp = `<span class="text-yellow-400 text-xs font-normal px-2 bg-yellow-900/30 rounded border border-yellow-700/50">👀 A medias (${vistosDeTemp}/${totalDeTemp})</span>`;
+            } else if (vistosDeTemp === totalDeTemp && totalDeTemp > 0) {
+                estadoTemp = '<span class="text-green-400 text-xs font-normal px-2 bg-green-900/30 rounded border border-green-700/50">✅ Vista</span>';
+            }
+
             modalContent.innerHTML += `
                 <div class="mb-3 border border-gray-700/80 rounded-2xl overflow-hidden shadow-sm">
-                    <div class="w-full bg-gray-700/70 flex flex-wrap sm:flex-nowrap justify-between items-stretch">
+                    <div class="w-full bg-gray-700/70 flex flex-col sm:flex-row justify-between items-stretch">
+                        
                         <button onclick="cargarEpisodios(this.parentElement, ${tmdb_id}, ${temp.season_number}, '${tracking_id}')" 
-                                class="flex-grow p-4 text-left font-bold text-white hover:bg-gray-600 flex items-center gap-3 transition-colors">
+                                class="flex-grow p-4 text-left font-bold text-white hover:bg-gray-600 flex items-center gap-3 transition-colors flex-wrap">
                             Temp. ${temp.season_number} 
                             <span class="text-xs font-normal bg-gray-800/80 px-2.5 py-1 rounded-lg text-gray-300 border border-gray-600/50">${temp.episode_count} cap.</span>
+                            ${estadoTemp}
                         </button>
                         
+                        <!-- BOTÓN REDISEÑADO -->
                         <button onclick="marcarTemporadaCompleta('${tracking_id}', ${temp.season_number}, ${temp.episode_count}, this)" 
-                                class="px-5 py-3 bg-green-900/40 text-green-400 hover:bg-green-600 hover:text-white font-bold text-xs sm:text-sm border-l border-gray-600/60 transition-all flex items-center justify-center">
-                            ✓ Temporada Vista
+                                class="px-5 py-3 bg-indigo-900/40 text-indigo-300 hover:bg-indigo-600 hover:text-white font-bold text-xs sm:text-sm border-t sm:border-t-0 sm:border-l border-gray-600/60 transition-all flex items-center justify-center">
+                            ✓ Marcar como vista
                         </button>
                     </div>
                     <div class="capitulos-container hidden p-2 bg-gray-900/90 flex flex-col gap-1"></div>
@@ -661,14 +683,27 @@ async function marcarTemporadaCompleta(tracking_id, season_number, totalCapitulo
     contenedor.innerHTML = ''; 
     contenedor.classList.add('hidden');
     
-    btnElement.textContent = "✓ Vista";
-    btnElement.classList.replace('text-green-400', 'text-white');
-    btnElement.classList.replace('bg-green-900/40', 'bg-green-600');
+    btnElement.textContent = "✓ Guardado";
+    btnElement.classList.replace('text-indigo-300', 'text-white');
+    btnElement.classList.replace('bg-indigo-900/40', 'bg-indigo-600');
     
     setTimeout(() => { 
-        btnElement.textContent = "✓ Temporada Vista"; 
+        btnElement.textContent = "✓ Marcar como vista"; 
         btnElement.disabled = false;
-        btnElement.classList.replace('text-white', 'text-green-400');
-        btnElement.classList.replace('bg-green-600', 'bg-green-900/40');
-    }, 2000);
+        btnElement.classList.replace('text-white', 'text-indigo-300');
+        btnElement.classList.replace('bg-indigo-600', 'bg-indigo-900/40');
+        // Para que se refresque el badge de "Vista" en la cabecera:
+        abrirModalSeries(
+            document.getElementById('modalTitle').getAttribute('data-tmdb-id') || document.querySelector(`[onclick*="abrirModalSeries(${document.getElementById('modalTitle').getAttribute('data-tmdb-id') || '0'}, '${tracking_id}'"]`)?.closest('div')?.querySelector('h3')?.textContent || document.getElementById('modalTitle').textContent, 
+            tracking_id, 
+            document.getElementById('modalTitle').textContent
+        ); // Hack rápido para recargar el modal
+    }, 1500);
+}
+
+// Pequeña inyección de atributo para poder recargar el modal desde el botón de la temporada
+const oldAbrir = abrirModalSeries;
+abrirModalSeries = async function(tmdb_id, tracking_id, titulo) {
+    document.getElementById('modalTitle').setAttribute('data-tmdb-id', tmdb_id);
+    await oldAbrir(tmdb_id, tracking_id, titulo);
 }
