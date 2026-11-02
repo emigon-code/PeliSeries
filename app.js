@@ -11,14 +11,14 @@ let usuarioActual = null;
 let miListaTMDBIDs = []; 
 let miBibliotecaLocal = []; 
 let vistosTemporal = []; 
-let totalSerieCapitulosGlobal = 0; // Guardará el total de capítulos de la serie abierta en el modal
+let totalSerieCapitulosGlobal = 0; 
 
 // Filtros, Ordenación y Diseño
 let currentFilterType = 'all';
 let currentFilterStatus = 'all';
 let currentFilterRating = 0; 
-let currentSort = 'rating'; // 'title' o 'rating'
-let currentSearchSort = 'rating'; // 'title' o 'rating' en el buscador
+let currentSort = 'rating'; 
+let currentSearchSort = 'rating'; 
 let currentLayoutMode = 'grid'; 
 let currentPosterSize = 'medium'; 
 
@@ -53,6 +53,7 @@ const detailSeasons = document.getElementById('detailSeasons');
 const detailStatus = document.getElementById('detailStatus');
 const detailOverview = document.getElementById('detailOverview');
 const detailActions = document.getElementById('detailActions');
+const detailRecommendations = document.getElementById('detailRecommendations');
 const modalEpisodios = document.getElementById('modalEpisodios');
 
 
@@ -74,7 +75,7 @@ async function postLoginSetup() {
     loginForm.classList.add('hidden');
     userLogged.classList.remove('hidden');
     await actualizarIdsLocales(); 
-    btnNavList.click(); // Inicio por defecto en Mi Lista
+    btnNavList.click(); 
 }
 
 logoutBtn.addEventListener('click', async () => {
@@ -93,15 +94,19 @@ comprobarSesion();
 // --- NAVEGACIÓN ---
 btnNavSearch.addEventListener('click', () => {
     viewSearch.classList.remove('hidden'); viewList.classList.add('hidden');
-    btnNavSearch.classList.replace('bg-gray-700', 'bg-indigo-600');
-    btnNavList.classList.replace('bg-indigo-600', 'bg-gray-700');
+    btnNavSearch.classList.replace('bg-transparent', 'bg-gray-700');
+    btnNavSearch.classList.replace('text-gray-300', 'text-white');
+    btnNavList.classList.replace('bg-indigo-600', 'bg-transparent');
+    btnNavList.classList.replace('text-white', 'text-gray-300');
     if (pelisYSeries.length > 0) renderResults(pelisYSeries); 
 });
 
 btnNavList.addEventListener('click', () => {
     viewSearch.classList.add('hidden'); viewList.classList.remove('hidden');
-    btnNavList.classList.replace('bg-gray-700', 'bg-indigo-600');
-    btnNavSearch.classList.replace('bg-indigo-600', 'bg-gray-700');
+    btnNavList.classList.replace('bg-transparent', 'bg-indigo-600');
+    btnNavList.classList.replace('text-gray-300', 'text-white');
+    btnNavSearch.classList.replace('bg-gray-700', 'bg-transparent');
+    btnNavSearch.classList.replace('text-white', 'text-gray-300');
     cargarMiLista();
 });
 
@@ -156,11 +161,11 @@ async function procesarImportacion() {
     btnProcesarImport.textContent = "Cerrar y ver mi lista";
     btnProcesarImport.disabled = false;
     btnProcesarImport.classList.remove('opacity-50');
-    btnProcesarImport.onclick = () => { cerrarModalImportacion(); cargarMiLista(); };
+    btnProcesarImport.onclick = () => { cerrarModalImportacion(); btnNavList.click(); };
 }
 
 
-// --- BÚSQUEDA TMDB Y ORDENACIÓN EN BUSCADOR ---
+// --- BÚSQUEDA TMDB Y ORDENACIÓN ---
 async function buscarEnTMDB(query) {
     const url = `https://api.themoviedb.org/3/search/multi?query=${encodeURIComponent(query)}&language=es-ES&page=1`;
     try {
@@ -184,8 +189,10 @@ searchInput.addEventListener('keypress', (e) => { if (e.key === 'Enter') ejecuta
 
 document.querySelectorAll('.search-sort-btn').forEach(btn => {
     btn.addEventListener('click', (e) => {
-        document.querySelectorAll('.search-sort-btn').forEach(b => b.className = 'search-sort-btn px-3 py-1 rounded-lg text-xs font-bold bg-gray-800 text-gray-300 hover:bg-gray-700');
-        e.target.className = 'search-sort-btn px-3 py-1 rounded-lg text-xs font-bold bg-indigo-600 text-white shadow';
+        document.querySelectorAll('.search-sort-btn').forEach(b => {
+            b.className = 'search-sort-btn px-3 py-1.5 rounded-lg text-xs font-bold bg-gray-900/50 text-gray-400 hover:bg-gray-700 transition-all';
+        });
+        e.target.className = 'search-sort-btn px-3 py-1.5 rounded-lg text-xs font-bold bg-indigo-600 text-white shadow transition-all';
         currentSearchSort = e.target.getAttribute('data-search-sort');
         renderResults(pelisYSeries);
     });
@@ -195,7 +202,6 @@ function renderResults(resultados) {
     resultsGrid.innerHTML = '';
     if (resultados.length === 0) return resultsGrid.innerHTML = '<p class="text-gray-400 col-span-full text-center">Sin resultados.</p>';
 
-    // Ordenar resultados de búsqueda
     const ordenados = [...resultados].sort((a, b) => {
         if (currentSearchSort === 'title') {
             const tA = a.title || a.name || '';
@@ -214,20 +220,20 @@ function renderResults(resultados) {
 
         const yaLaTengo = miListaTMDBIDs.includes(item.id);
         const botonAñadir = yaLaTengo 
-            ? `<button disabled class="mt-auto w-full bg-green-900/50 text-green-400 py-2 rounded-xl text-xs font-bold border border-green-800/80">✓ En tu lista</button>`
-            : `<button class="mt-auto w-full bg-gray-700 hover:bg-gray-600 text-white py-2 rounded-xl text-xs font-semibold transition-colors" onclick="event.stopPropagation(); añadirALista(${item.id})">+ Añadir a mi lista</button>`;
+            ? `<button disabled class="mt-auto w-full bg-green-900/50 text-green-400 py-2.5 rounded-xl text-xs font-bold border border-green-800/80">✓ En tu lista</button>`
+            : `<button class="mt-auto w-full bg-gray-700 hover:bg-gray-600 text-white py-2.5 rounded-xl text-xs font-semibold transition-colors shadow" onclick="event.stopPropagation(); añadirALista(${item.id})">+ Añadir a mi lista</button>`;
 
         const card = document.createElement('div');
-        card.className = 'bg-gray-800 rounded-2xl overflow-hidden shadow-lg hover:ring-2 hover:ring-indigo-500 transition-all flex flex-col cursor-pointer group relative';
+        card.className = 'bg-gray-800 rounded-2xl overflow-hidden shadow-lg hover:ring-2 hover:ring-indigo-500 transition-all flex flex-col cursor-pointer group relative border border-gray-700/50';
         card.onclick = () => abrirModalDetalleDesdeBusqueda(item.id);
 
         card.innerHTML = `
             <div class="relative aspect-[2/3] overflow-hidden bg-gray-900">
                 <img src="${imgUrl}" alt="${titulo}" class="w-full h-full object-cover group-hover:scale-105 transition-transform duration-300">
-                <span class="absolute top-2 right-2 bg-black/80 backdrop-blur-md text-yellow-400 text-xs font-bold px-2 py-1 rounded-lg border border-yellow-500/20">⭐ ${rating}</span>
+                <span class="absolute top-2 right-2 bg-black/80 backdrop-blur-md text-yellow-400 text-[10px] font-bold px-2 py-1 rounded-lg border border-yellow-500/20">⭐ ${rating}</span>
             </div>
             <div class="p-3.5 flex flex-col flex-grow">
-                <span class="text-[10px] font-bold uppercase tracking-wider text-gray-400 mb-0.5">${tipo}</span>
+                <span class="text-[9px] font-bold uppercase tracking-wider text-gray-400 mb-0.5">${tipo}</span>
                 <h3 class="font-bold text-sm leading-snug mb-3 line-clamp-2 group-hover:text-indigo-400 transition-colors">${titulo}</h3>
                 ${botonAñadir}
             </div>
@@ -238,48 +244,48 @@ function renderResults(resultados) {
 
 
 // --- FILTROS Y ORDENACIÓN EN MI LISTA ---
+function updateBtnClasses(selector, activeValue, dataAttr) {
+    document.querySelectorAll(selector).forEach(btn => {
+        if(btn.getAttribute(dataAttr) == activeValue) {
+            btn.className = `${selector.replace('.','')} px-3 py-1.5 rounded-xl text-xs font-bold transition-all bg-indigo-600 text-white shadow`;
+        } else {
+            btn.className = `${selector.replace('.','')} px-3 py-1.5 rounded-xl text-xs font-bold transition-all bg-transparent text-gray-400 hover:text-white`;
+        }
+    });
+}
+
 document.querySelectorAll('.filter-type-btn').forEach(btn => {
     btn.addEventListener('click', (e) => {
-        document.querySelectorAll('.filter-type-btn').forEach(b => b.className = 'filter-type-btn px-2.5 py-1 rounded-lg text-xs font-bold transition-all bg-gray-800 text-gray-300 hover:bg-gray-700');
-        e.target.className = 'filter-type-btn px-2.5 py-1 rounded-lg text-xs font-bold transition-all bg-indigo-600 text-white shadow';
         currentFilterType = e.target.getAttribute('data-filter-type');
+        updateBtnClasses('.filter-type-btn', currentFilterType, 'data-filter-type');
         aplicarFiltrosYDiseño();
     });
 });
-
 document.querySelectorAll('.filter-status-btn').forEach(btn => {
     btn.addEventListener('click', (e) => {
-        document.querySelectorAll('.filter-status-btn').forEach(b => b.className = 'filter-status-btn px-2.5 py-1 rounded-lg text-xs font-bold transition-all bg-gray-800 text-gray-300 hover:bg-gray-700');
-        e.target.className = 'filter-status-btn px-2.5 py-1 rounded-lg text-xs font-bold transition-all bg-indigo-600 text-white shadow';
         currentFilterStatus = e.target.getAttribute('data-filter-status');
+        updateBtnClasses('.filter-status-btn', currentFilterStatus, 'data-filter-status');
         aplicarFiltrosYDiseño();
     });
 });
-
 document.querySelectorAll('.filter-rating-btn').forEach(btn => {
     btn.addEventListener('click', (e) => {
-        document.querySelectorAll('.filter-rating-btn').forEach(b => b.className = 'filter-rating-btn px-2.5 py-1 rounded-lg text-xs font-bold transition-all bg-gray-800 text-gray-300 hover:bg-gray-700');
-        e.target.className = 'filter-rating-btn px-2.5 py-1 rounded-lg text-xs font-bold transition-all bg-indigo-600 text-white shadow';
         currentFilterRating = parseFloat(e.target.getAttribute('data-filter-rating'));
+        updateBtnClasses('.filter-rating-btn', currentFilterRating, 'data-filter-rating');
         aplicarFiltrosYDiseño();
     });
 });
-
-// NUEVO: Ordenación en Mi Lista
 document.querySelectorAll('.sort-btn').forEach(btn => {
     btn.addEventListener('click', (e) => {
-        document.querySelectorAll('.sort-btn').forEach(b => b.className = 'sort-btn px-2.5 py-1 rounded-lg text-xs font-bold transition-all bg-gray-800 text-gray-300 hover:bg-gray-700');
-        e.target.className = 'sort-btn px-2.5 py-1 rounded-lg text-xs font-bold transition-all bg-indigo-600 text-white shadow';
         currentSort = e.target.getAttribute('data-sort');
+        updateBtnClasses('.sort-btn', currentSort, 'data-sort');
         aplicarFiltrosYDiseño();
     });
 });
-
 document.querySelectorAll('.size-btn').forEach(btn => {
     btn.addEventListener('click', (e) => {
-        document.querySelectorAll('.size-btn').forEach(b => b.className = 'size-btn px-2.5 py-1 rounded-lg text-xs font-bold bg-gray-800 text-gray-300 hover:bg-gray-700');
-        e.target.className = 'size-btn px-2.5 py-1 rounded-lg text-xs font-bold bg-indigo-600 text-white shadow';
         currentPosterSize = e.target.getAttribute('data-size');
+        updateBtnClasses('.size-btn', currentPosterSize, 'data-size');
         aplicarFiltrosYDiseño();
     });
 });
@@ -289,15 +295,14 @@ const btnViewList = document.getElementById('btnViewList');
 
 btnViewGrid.addEventListener('click', () => {
     currentLayoutMode = 'grid';
-    btnViewGrid.className = 'p-1.5 rounded-lg text-sm bg-indigo-600 text-white shadow';
-    btnViewList.className = 'p-1.5 rounded-lg text-sm bg-gray-800 text-gray-300 hover:bg-gray-700';
+    btnViewGrid.className = 'p-1.5 rounded-xl text-sm bg-indigo-600 text-white shadow transition-all';
+    btnViewList.className = 'p-1.5 rounded-xl text-sm bg-transparent text-gray-400 hover:text-white transition-all';
     aplicarFiltrosYDiseño();
 });
-
 btnViewList.addEventListener('click', () => {
     currentLayoutMode = 'list';
-    btnViewList.className = 'p-1.5 rounded-lg text-sm bg-indigo-600 text-white shadow';
-    btnViewGrid.className = 'p-1.5 rounded-lg text-sm bg-gray-800 text-gray-300 hover:bg-gray-700';
+    btnViewList.className = 'p-1.5 rounded-xl text-sm bg-indigo-600 text-white shadow transition-all';
+    btnViewGrid.className = 'p-1.5 rounded-xl text-sm bg-transparent text-gray-400 hover:text-white transition-all';
     aplicarFiltrosYDiseño();
 });
 
@@ -331,7 +336,7 @@ async function borrarDeMiLista(tracking_id, tmdb_id, titulo) {
 }
 
 
-// --- PESTAÑA MI LISTA CON DETALLES Y ORDENACIÓN ---
+// --- PESTAÑA MI LISTA CON DETALLES ---
 async function cargarMiLista() {
     if (!usuarioActual) return;
     myListGrid.innerHTML = '<p class="text-indigo-400 col-span-full text-center py-8">Cargando biblioteca personal...</p>';
@@ -372,7 +377,6 @@ async function cargarMiLista() {
 }
 
 function aplicarFiltrosYDiseño() {
-    // 1. Filtrado
     let dataFiltrada = miBibliotecaLocal.filter(registro => {
         const matchType = currentFilterType === 'all' || registro.items.type === currentFilterType;
         const matchStatus = currentFilterStatus === 'all' || registro.status === currentFilterStatus;
@@ -383,20 +387,19 @@ function aplicarFiltrosYDiseño() {
             if (isNaN(r) || r < 8) matchRating = false;
         } else if (currentFilterRating === 6) {
             const r = parseFloat(registro.details.rating);
-            if (isNaN(r) || r < 6 || r >= 8) matchRating = false;
+            if (isNaN(r) || r < 6 || r >= 8) matchRating = false; // Rango 6 - 7.9
         }
 
         return matchType && matchStatus && matchRating;
     });
 
-    // 2. Ordenación
     dataFiltrada.sort((a, b) => {
         if (currentSort === 'title') {
             return a.items.title.localeCompare(b.items.title);
         } else {
             const rA = parseFloat(a.details.rating) || 0;
             const rB = parseFloat(b.details.rating) || 0;
-            return rB - rA; // De mayor a menor nota
+            return rB - rA; 
         }
     });
 
@@ -424,8 +427,8 @@ function pintarMiLista(dataArray) {
         
         let badgeSerie = '';
         if (item.type === 'tv') {
-            const estadoTexto = details.is_ended ? '🔴 Finalizada' : '🟢 En emisión';
-            badgeSerie = `<span class="text-[11px] text-gray-300 font-medium block mt-0.5">${details.seasons_count} Temp. • ${estadoTexto}</span>`;
+            const estadoTexto = details.is_ended ? '🔴 Fin' : '🟢 Emisión';
+            badgeSerie = `<span class="text-[10px] text-gray-300 font-medium block mt-0.5">${details.seasons_count} Temp. • ${estadoTexto}</span>`;
         }
 
         const card = document.createElement('div');
@@ -448,7 +451,7 @@ function pintarMiLista(dataArray) {
                 <img src="${imgUrl}" alt="${item.title}" class="${listImgClasses} object-cover rounded-xl flex-shrink-0 shadow">
                 <div class="flex flex-col flex-grow min-w-0">
                     <div class="flex items-center gap-2 mb-1">
-                        <span class="text-[10px] font-bold uppercase tracking-wider px-2 py-0.5 rounded bg-gray-700 text-gray-300">${item.type === 'movie' ? 'Película' : 'Serie'}</span>
+                        <span class="text-[9px] font-bold uppercase tracking-wider px-2 py-0.5 rounded bg-gray-700 text-gray-300">${item.type === 'movie' ? 'Película' : 'Serie'}</span>
                         <span class="text-xs font-bold text-yellow-400">⭐ ${details.rating}</span>
                     </div>
                     <h3 class="font-bold ${listTitleClasses} text-white truncate">${item.title}</h3>
@@ -466,8 +469,8 @@ function pintarMiLista(dataArray) {
             `;
         } else {
             let titleClass = 'text-sm';
-            let typeClass = 'text-[10px]';
-            if (currentPosterSize === 'small') { titleClass = 'text-xs'; typeClass = 'text-[9px]'; }
+            let typeClass = 'text-[9px]';
+            if (currentPosterSize === 'small') { titleClass = 'text-xs'; typeClass = 'text-[8px]'; }
 
             card.className = 'bg-gray-800 rounded-2xl overflow-hidden shadow border border-gray-700/80 flex flex-col hover:border-indigo-500 transition-all cursor-pointer group';
             card.onclick = () => abrirModalDetalleDesdeLista(registro.id);
@@ -475,7 +478,7 @@ function pintarMiLista(dataArray) {
             card.innerHTML = `
                 <div class="relative aspect-[2/3] overflow-hidden bg-gray-900">
                     <img src="${imgUrl}" alt="${item.title}" class="w-full h-full object-cover group-hover:scale-105 transition-transform duration-300">
-                    <span class="absolute top-2 right-2 bg-black/80 backdrop-blur-md text-yellow-400 text-xs font-bold px-2 py-1 rounded-lg border border-yellow-500/20">⭐ ${details.rating}</span>
+                    <span class="absolute top-2 right-2 bg-black/80 backdrop-blur-md text-yellow-400 text-[10px] font-bold px-2 py-1 rounded-lg border border-yellow-500/20">⭐ ${details.rating}</span>
                 </div>
                 <div class="p-3 flex flex-col flex-grow">
                     <span class="${typeClass} font-bold uppercase text-gray-400 tracking-wider mb-0.5">${item.type === 'movie' ? 'Película' : 'Serie'}</span>
@@ -497,8 +500,43 @@ function pintarMiLista(dataArray) {
 }
 
 
-// --- MODAL DE DETALLE / SINOPSIS ---
+// --- MODAL DE DETALLE Y RECOMENDACIONES ---
 function cerrarModalDetalle() { modalDetalle.classList.add('hidden'); }
+
+// Función puente para abrir desde una recomendación sin perder el tracking
+async function abrirModalDetalleDirecto(tmdb_id, tipo) {
+    cerrarModalDetalle();
+    try {
+        const res = await fetch(`https://api.themoviedb.org/3/${tipo}/${tmdb_id}?language=es-ES`, { headers: { Authorization: `Bearer ${TMDB_TOKEN}` } });
+        const item = await res.json();
+        item.media_type = tipo; 
+        if (!pelisYSeries.find(i => i.id === tmdb_id)) pelisYSeries.push(item);
+        abrirModalDetalleDesdeBusqueda(tmdb_id);
+    } catch(e) { console.error("Error al cargar recomendación"); }
+}
+
+async function cargarRecomendaciones(tmdb_id, tipo) {
+    detailRecommendations.innerHTML = '<p class="text-xs text-gray-500">Cargando...</p>';
+    try {
+        const res = await fetch(`https://api.themoviedb.org/3/${tipo}/${tmdb_id}/recommendations?language=es-ES&page=1`, { headers: { Authorization: `Bearer ${TMDB_TOKEN}` } });
+        const data = await res.json();
+        if (data.results.length === 0) {
+            detailRecommendations.innerHTML = '<p class="text-xs text-gray-500">No hay recomendaciones disponibles.</p>';
+            return;
+        }
+        detailRecommendations.innerHTML = '';
+        data.results.slice(0, 10).forEach(rec => {
+            const img = rec.poster_path ? `https://image.tmdb.org/t/p/w200${rec.poster_path}` : 'https://via.placeholder.com/200x300/1f2937/ffffff?text=X';
+            const recTipo = rec.media_type || tipo;
+            detailRecommendations.innerHTML += `
+                <div class="flex-shrink-0 w-24 cursor-pointer group" onclick="abrirModalDetalleDirecto(${rec.id}, '${recTipo}')">
+                    <img src="${img}" class="w-full h-36 object-cover rounded-xl shadow-md group-hover:ring-2 ring-indigo-500 transition-all">
+                    <p class="text-[10px] text-gray-300 mt-1.5 truncate group-hover:text-indigo-400">${rec.title || rec.name}</p>
+                </div>
+            `;
+        });
+    } catch(e) { detailRecommendations.innerHTML = '<p class="text-xs text-red-500">Error al cargar.</p>'; }
+}
 
 async function abrirModalDetalleDesdeBusqueda(tmdb_id) {
     const item = pelisYSeries.find(i => i.id === tmdb_id);
@@ -529,6 +567,8 @@ async function abrirModalDetalleDesdeBusqueda(tmdb_id) {
     detailActions.innerHTML = yaLaTengo
         ? `<button disabled class="w-full bg-green-900/50 text-green-400 py-3 rounded-xl text-sm font-bold border border-green-800">✓ Ya está en tu biblioteca</button>`
         : `<button onclick="añadirALista(${item.id}); cerrarModalDetalle();" class="w-full bg-indigo-600 hover:bg-indigo-500 text-white py-3 rounded-xl text-sm font-bold transition-colors shadow">+ Añadir a mi lista</button>`;
+
+    cargarRecomendaciones(tmdb_id, item.media_type);
 }
 
 function abrirModalDetalleDesdeLista(tracking_id) {
@@ -562,13 +602,15 @@ function abrirModalDetalleDesdeLista(tracking_id) {
     detailActions.innerHTML = `
         ${botonCapitulos}
         <button onclick="borrarDeMiLista('${registro.id}', ${item.tmdb_id}, '${item.title.replace(/'/g, "\\'")}')" class="bg-red-600/20 hover:bg-red-600 text-red-400 hover:text-white border border-red-600/40 px-5 py-3 rounded-xl text-sm font-bold transition-colors flex items-center justify-center gap-2">
-            🗑️ Eliminar de mi lista
+            🗑️ Eliminar
         </button>
     `;
+
+    cargarRecomendaciones(item.tmdb_id, item.type);
 }
 
 
-// --- LÓGICA DE ESTADOS CASCADA (SERIE -> CAPÍTULOS) ---
+// --- LÓGICA DE ESTADOS CASCADA ---
 async function procesarSerieCompletaBBDD(tracking_id, tmdb_id) {
     try {
         const res = await fetch(`https://api.themoviedb.org/3/tv/${tmdb_id}?language=es-ES`, { headers: { Authorization: `Bearer ${TMDB_TOKEN}` } });
@@ -590,21 +632,18 @@ async function cambiarEstado(selectElement, tracking_id, tmdb_id, tipo, titulo) 
     selectElement.disabled = true;
 
     if (tipo === 'tv') {
-        // CASCADA 1: Si pasa a Vista -> Marcar todos los capítulos
         if (nuevoEstado === 'vista') {
             if (confirm(`Al marcar "${titulo}" como Vista, se marcarán automáticamente todos sus capítulos. ¿Deseas continuar?`)) {
                 await procesarSerieCompletaBBDD(tracking_id, tmdb_id);
             } else {
-                cargarMiLista();
+                aplicarFiltrosYDiseño();
                 return; 
             }
-        } 
-        // CASCADA 2: Si pasa a Pendiente -> Borrar todos los capítulos
-        else if (nuevoEstado === 'pendiente') {
+        } else if (nuevoEstado === 'pendiente') {
             if (confirm(`Al marcar "${titulo}" como Pendiente, se borrará todo el progreso de sus capítulos. ¿Deseas continuar?`)) {
                 await clienteSupabase.from('user_episodes').delete().eq('tracking_id', tracking_id);
             } else {
-                cargarMiLista();
+                aplicarFiltrosYDiseño();
                 return;
             }
         }
@@ -613,6 +652,7 @@ async function cambiarEstado(selectElement, tracking_id, tmdb_id, tipo, titulo) 
     await clienteSupabase.from('user_tracking').update({ status: nuevoEstado }).eq('id', tracking_id);
     const index = miBibliotecaLocal.findIndex(r => r.id === tracking_id);
     if(index > -1) miBibliotecaLocal[index].status = nuevoEstado;
+    
     selectElement.disabled = false;
     aplicarFiltrosYDiseño();
 }
@@ -631,14 +671,12 @@ async function abrirModalSeries(tmdb_id, tracking_id, titulo) {
         const resTMDB = await fetch(`https://api.themoviedb.org/3/tv/${tmdb_id}?language=es-ES`, { headers: { Authorization: `Bearer ${TMDB_TOKEN}` } });
         const serieData = await resTMDB.json();
 
-        // Calculamos total de capítulos reales de la serie
         totalSerieCapitulosGlobal = 0;
         serieData.seasons.filter(t => t.season_number > 0).forEach(t => totalSerieCapitulosGlobal += t.episode_count);
 
         const { data: vistosDB } = await clienteSupabase.from('user_episodes').select('season_number, episode_number').eq('tracking_id', tracking_id);
         vistosTemporal = vistosDB || [];
 
-        // Evaluar estado del botón "Marcar serie completa"
         evaluarBotonSerieCompleta(tracking_id, tmdb_id, titulo);
 
         modalContent.innerHTML = '';
@@ -647,19 +685,18 @@ async function abrirModalSeries(tmdb_id, tracking_id, titulo) {
             const totalDeTemp = temp.episode_count;
             const tempCompleta = vistosDeTemp === totalDeTemp && totalDeTemp > 0;
 
-            let estadoTempHtml = '<span class="season-status-badge text-gray-400 text-xs font-normal px-2 bg-gray-800 rounded border border-gray-700">⏳ Pendiente</span>';
+            let estadoTempHtml = '<span class="season-status-badge text-gray-400 text-[10px] font-normal px-2 bg-gray-800 rounded border border-gray-700 tracking-wider uppercase">⏳ Pendiente</span>';
             if (vistosDeTemp > 0 && vistosDeTemp < totalDeTemp) {
-                estadoTempHtml = `<span class="season-status-badge text-yellow-400 text-xs font-normal px-2 bg-yellow-900/30 rounded border border-yellow-700/50">👀 A medias (${vistosDeTemp}/${totalDeTemp})</span>`;
+                estadoTempHtml = `<span class="season-status-badge text-yellow-400 text-[10px] font-normal px-2 bg-yellow-900/30 rounded border border-yellow-700/50 tracking-wider uppercase">👀 A medias (${vistosDeTemp}/${totalDeTemp})</span>`;
             } else if (tempCompleta) {
-                estadoTempHtml = '<span class="season-status-badge text-green-400 text-xs font-normal px-2 bg-green-900/30 rounded border border-green-700/50">✅ Vista</span>';
+                estadoTempHtml = '<span class="season-status-badge text-green-400 text-[10px] font-normal px-2 bg-green-900/30 rounded border border-green-700/50 tracking-wider uppercase">✅ Vista</span>';
             }
 
-            // Si está vista completa, deshabilitamos y atenuamos el botón
             const btnTempAttr = tempCompleta 
-                ? 'disabled class="season-action-btn px-5 py-3 bg-gray-800/50 text-gray-500 opacity-50 cursor-not-allowed font-bold text-xs sm:text-sm border-t sm:border-t-0 sm:border-l border-gray-600/60 flex items-center justify-center"' 
-                : 'class="season-action-btn px-5 py-3 bg-indigo-900/40 text-indigo-300 hover:bg-indigo-600 hover:text-white font-bold text-xs sm:text-sm border-t sm:border-t-0 sm:border-l border-gray-600/60 transition-all flex items-center justify-center"';
+                ? 'disabled class="season-action-btn px-4 py-3 bg-gray-800/50 text-gray-500 opacity-50 cursor-not-allowed font-bold text-[11px] sm:text-xs border-t sm:border-t-0 sm:border-l border-gray-600/60 flex items-center justify-center"' 
+                : 'class="season-action-btn px-4 py-3 bg-indigo-900/40 text-indigo-300 hover:bg-indigo-600 hover:text-white font-bold text-[11px] sm:text-xs border-t sm:border-t-0 sm:border-l border-gray-600/60 transition-all flex items-center justify-center"';
             
-            const btnTempTexto = tempCompleta ? '✓ Temporada completa' : '✓ Marcar como vista';
+            const btnTempTexto = tempCompleta ? '✓ Temp. completa' : '✓ Marcar como vista';
 
             modalContent.innerHTML += `
                 <div data-season-div="${temp.season_number}" data-total-caps="${temp.episode_count}" class="mb-3 border border-gray-700/80 rounded-2xl overflow-hidden shadow-sm">
@@ -667,12 +704,10 @@ async function abrirModalSeries(tmdb_id, tracking_id, titulo) {
                         <button onclick="cargarEpisodios(this.parentElement, ${tmdb_id}, ${temp.season_number}, '${tracking_id}')" 
                                 class="flex-grow p-4 text-left font-bold text-white hover:bg-gray-600 flex items-center gap-3 transition-colors flex-wrap">
                             Temp. ${temp.season_number} 
-                            <span class="text-xs font-normal bg-gray-800/80 px-2.5 py-1 rounded-lg text-gray-300 border border-gray-600/50">${temp.episode_count} cap.</span>
+                            <span class="text-[10px] font-normal bg-gray-800/80 px-2 py-0.5 rounded text-gray-300 border border-gray-600/50">${temp.episode_count} cap.</span>
                             ${estadoTempHtml}
                         </button>
-                        
-                        <button onclick="marcarTemporadaCompleta('${tracking_id}', ${temp.season_number}, ${temp.episode_count}, this, ${tmdb_id})" 
-                                ${btnTempAttr}>
+                        <button onclick="marcarTemporadaCompleta('${tracking_id}', ${temp.season_number}, ${temp.episode_count}, this, ${tmdb_id})" ${btnTempAttr}>
                             ${btnTempTexto}
                         </button>
                     </div>
@@ -691,19 +726,18 @@ function evaluarBotonSerieCompleta(tracking_id, tmdb_id, titulo) {
     if (serieCompleta) {
         btnMarcarSerie.textContent = "✓ Serie completada";
         btnMarcarSerie.disabled = true;
-        btnMarcarSerie.className = "bg-green-900/40 text-green-400 opacity-50 cursor-not-allowed text-xs md:text-sm font-bold py-2 px-3 md:px-4 rounded-xl shadow";
+        btnMarcarSerie.className = "bg-green-900/40 text-green-400 opacity-50 cursor-not-allowed text-xs md:text-sm font-bold py-2.5 px-4 rounded-xl shadow";
     } else {
         btnMarcarSerie.textContent = "✓ Marcar serie completa";
         btnMarcarSerie.disabled = false;
-        btnMarcarSerie.className = "bg-green-700 hover:bg-green-600 text-white text-xs md:text-sm font-bold py-2 px-3 md:px-4 rounded-xl shadow transition-colors";
+        btnMarcarSerie.className = "bg-green-700 hover:bg-green-600 text-white text-xs md:text-sm font-bold py-2.5 px-4 rounded-xl shadow transition-colors";
         btnMarcarSerie.onclick = async () => {
             btnMarcarSerie.textContent = "⌛ Guardando capítulos...";
             btnMarcarSerie.disabled = true;
             await procesarSerieCompletaBBDD(tracking_id, tmdb_id);
-            await clienteSupabase.from('user_tracking').update({ status: 'vista' }).eq('id', tracking_id);
+            await evaluarEstadoSerieDesdeEpisodios(tracking_id, tmdb_id);
             alert(`¡Has marcado toda la serie "${titulo}" como Vista!`);
             cerrarModal();
-            cargarMiLista(); 
         };
     }
 }
@@ -713,7 +747,7 @@ async function cargarEpisodios(cabeceraDiv, tmdb_id, season_number, tracking_id)
     if (contenedor.innerHTML !== '') { contenedor.classList.toggle('hidden'); return; }
     
     contenedor.classList.remove('hidden');
-    contenedor.innerHTML = '<p class="text-sm text-gray-400 p-3">Buscando capítulos...</p>';
+    contenedor.innerHTML = '<p class="text-xs text-gray-400 p-3">Buscando capítulos...</p>';
 
     const res = await fetch(`https://api.themoviedb.org/3/tv/${tmdb_id}/season/${season_number}?language=es-ES`, { headers: { Authorization: `Bearer ${TMDB_TOKEN}` } });
     const data = await res.json();
@@ -721,22 +755,20 @@ async function cargarEpisodios(cabeceraDiv, tmdb_id, season_number, tracking_id)
     contenedor.innerHTML = '';
     data.episodes.forEach(ep => {
         const estaVisto = vistosTemporal.some(v => v.season_number === season_number && v.episode_number === ep.episode_number);
-        
         contenedor.innerHTML += `
-            <div class="flex items-center gap-3 p-3 hover:bg-gray-800/80 rounded-xl transition-colors border-b border-gray-800/60 last:border-0">
+            <div class="flex items-center gap-3 p-2 hover:bg-gray-800/80 rounded-xl transition-colors border-b border-gray-800/60 last:border-0">
                 <input type="checkbox" id="ep-${ep.id}" ${estaVisto ? 'checked' : ''} 
                        onchange="marcarCapitulo('${tracking_id}', ${season_number}, ${ep.episode_number}, this.checked, ${tmdb_id})"
-                       class="peer w-5 h-5 accent-indigo-500 rounded cursor-pointer flex-shrink-0">
+                       class="peer w-4 h-4 accent-indigo-500 rounded cursor-pointer flex-shrink-0">
                 <label for="ep-${ep.id}" class="cursor-pointer flex items-center gap-2 flex-grow">
-                    <span class="text-xs font-semibold text-gray-500 w-6 flex-shrink-0">${ep.episode_number}.</span>
-                    <span class="text-sm text-gray-200 line-clamp-1 peer-checked:line-through peer-checked:text-gray-500 transition-all">${ep.name}</span>
+                    <span class="text-[11px] font-bold text-gray-500 w-5 flex-shrink-0">${ep.episode_number}.</span>
+                    <span class="text-[13px] text-gray-300 line-clamp-1 peer-checked:line-through peer-checked:text-gray-600 transition-all">${ep.name}</span>
                 </label>
             </div>
         `;
     });
 }
 
-// Checkbox individual
 async function marcarCapitulo(tracking_id, season_number, episode_number, isChecked, tmdb_id) {
     if (isChecked) {
         await clienteSupabase.from('user_episodes').insert({ tracking_id, season_number, episode_number });
@@ -747,26 +779,19 @@ async function marcarCapitulo(tracking_id, season_number, episode_number, isChec
         await clienteSupabase.from('user_episodes').delete().match({ tracking_id, season_number, episode_number });
         vistosTemporal = vistosTemporal.filter(v => !(v.season_number === season_number && v.episode_number === episode_number));
     }
-
-    // Actualizar visualmente la cabecera de la temporada en el modal
     actualizarHeaderTemporada(season_number);
-    
-    // Auto-actualizar estado global de la serie (Viendo / Vista / Pendiente)
     await evaluarEstadoSerieDesdeEpisodios(tracking_id, tmdb_id);
 }
 
-// Botón "Marcar como vista" en temporada
 async function marcarTemporadaCompleta(tracking_id, season_number, totalCapitulos, btnElement, tmdb_id) {
     btnElement.textContent = "⌛...";
     btnElement.disabled = true;
     
     await clienteSupabase.from('user_episodes').delete().match({ tracking_id, season_number });
-    
     const inserts = [];
     for(let i = 1; i <= totalCapitulos; i++) inserts.push({ tracking_id, season_number, episode_number: i });
     await clienteSupabase.from('user_episodes').insert(inserts);
 
-    // Actualizar memoria temporal local
     vistosTemporal = vistosTemporal.filter(v => v.season_number !== season_number);
     for(let i = 1; i <= totalCapitulos; i++) vistosTemporal.push({ season_number, episode_number: i });
 
@@ -790,24 +815,20 @@ function actualizarHeaderTemporada(season_number) {
     const btnElem = tempDiv.querySelector('.season-action-btn');
 
     if (badgeElem) {
-        if (vistosDeTemp === 0) {
-            badgeElem.outerHTML = '<span class="season-status-badge text-gray-400 text-xs font-normal px-2 bg-gray-800 rounded border border-gray-700">⏳ Pendiente</span>';
-        } else if (vistosDeTemp < totalCapitulos) {
-            badgeElem.outerHTML = `<span class="season-status-badge text-yellow-400 text-xs font-normal px-2 bg-yellow-900/30 rounded border border-yellow-700/50">👀 A medias (${vistosDeTemp}/${totalCapitulos})</span>`;
-        } else {
-            badgeElem.outerHTML = '<span class="season-status-badge text-green-400 text-xs font-normal px-2 bg-green-900/30 rounded border border-green-700/50">✅ Vista</span>';
-        }
+        if (vistosDeTemp === 0) badgeElem.outerHTML = '<span class="season-status-badge text-gray-400 text-[10px] font-normal px-2 bg-gray-800 rounded border border-gray-700 tracking-wider uppercase">⏳ Pendiente</span>';
+        else if (vistosDeTemp < totalCapitulos) badgeElem.outerHTML = `<span class="season-status-badge text-yellow-400 text-[10px] font-normal px-2 bg-yellow-900/30 rounded border border-yellow-700/50 tracking-wider uppercase">👀 A medias (${vistosDeTemp}/${totalCapitulos})</span>`;
+        else badgeElem.outerHTML = '<span class="season-status-badge text-green-400 text-[10px] font-normal px-2 bg-green-900/30 rounded border border-green-700/50 tracking-wider uppercase">✅ Vista</span>';
     }
 
     if (btnElem) {
         if (tempCompleta) {
             btnElem.disabled = true;
-            btnElem.textContent = "✓ Temporada completa";
-            btnElem.className = "season-action-btn px-5 py-3 bg-gray-800/50 text-gray-500 opacity-50 cursor-not-allowed font-bold text-xs sm:text-sm border-t sm:border-t-0 sm:border-l border-gray-600/60 flex items-center justify-center";
+            btnElem.textContent = "✓ Temp. completa";
+            btnElem.className = "season-action-btn px-4 py-3 bg-gray-800/50 text-gray-500 opacity-50 cursor-not-allowed font-bold text-[11px] sm:text-xs border-t sm:border-t-0 sm:border-l border-gray-600/60 flex items-center justify-center";
         } else {
             btnElem.disabled = false;
             btnElem.textContent = "✓ Marcar como vista";
-            btnElem.className = "season-action-btn px-5 py-3 bg-indigo-900/40 text-indigo-300 hover:bg-indigo-600 hover:text-white font-bold text-xs sm:text-sm border-t sm:border-t-0 sm:border-l border-gray-600/60 transition-all flex items-center justify-center";
+            btnElem.className = "season-action-btn px-4 py-3 bg-indigo-900/40 text-indigo-300 hover:bg-indigo-600 hover:text-white font-bold text-[11px] sm:text-xs border-t sm:border-t-0 sm:border-l border-gray-600/60 transition-all flex items-center justify-center";
         }
     }
 }
@@ -816,20 +837,17 @@ async function evaluarEstadoSerieDesdeEpisodios(tracking_id, tmdb_id) {
     const totalVistos = vistosTemporal.length;
     let nuevoEstado = 'pendiente';
 
-    if (totalVistos === totalSerieCapitulosGlobal && totalSerieCapitulosGlobal > 0) {
-        nuevoEstado = 'vista';
-    } else if (totalVistos > 0) {
-        nuevoEstado = 'viendo';
-    }
+    if (totalVistos === totalSerieCapitulosGlobal && totalSerieCapitulosGlobal > 0) nuevoEstado = 'vista';
+    else if (totalVistos > 0) nuevoEstado = 'viendo';
 
-    // Actualizar en Supabase
     await clienteSupabase.from('user_tracking').update({ status: nuevoEstado }).eq('id', tracking_id);
     
-    // Actualizar en memoria local para sincronizar con la pantalla principal
     const idx = miBibliotecaLocal.findIndex(r => r.id === tracking_id);
     if (idx > -1) miBibliotecaLocal[idx].status = nuevoEstado;
 
-    // Actualizar estado del botón de la cabecera del modal
     const titulo = document.getElementById('modalTitle').textContent;
     evaluarBotonSerieCompleta(tracking_id, tmdb_id, titulo);
+    
+    // ACTIVA LA ACTUALIZACIÓN EN LA VISTA PRINCIPAL
+    aplicarFiltrosYDiseño(); 
 }
