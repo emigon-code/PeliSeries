@@ -1,4 +1,4 @@
-// 1. CREDENCIALES (Rellena antes de guardar)
+// 1. CREDENCIALES
 const TMDB_TOKEN = 'eyJhbGciOiJIUzI1NiJ9.eyJhdWQiOiJmNTIyNzVlMDVhNTAxMjllZWYwMGRhN2Q5ZmU5NTZlZSIsIm5iZiI6MTc5MzU1NjUzNC4wMDcsInN1YiI6IjZhZTc4MDM2MWMyNDI4MTQ4MmM4ZGM2NSIsInNjb3BlcyI6WyJhcGlfcmVhZCJdLCJ2ZXJzaW9uIjoxfQ.b2COQUX-mmBdGPcxwCTUN7HI5EN6KNemlZSzbaD5NuI'; 
 const SUPABASE_URL = 'https://dqqfoucxbsvfdshruygt.supabase.co';
 const SUPABASE_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImRxcWZvdWN4YnN2ZmRzaHJ1eWd0Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3OTM1NDgyOTQsImV4cCI6MjEwOTEyNDI5NH0.Z4yVjtuuSrs3Pc5AghHFVeENOvmIeA8k34iWcVQiqIQ';
@@ -15,8 +15,9 @@ let vistosTemporal = [];
 // Filtros y Diseño
 let currentFilterType = 'all';
 let currentFilterStatus = 'all';
-let currentLayoutMode = 'grid'; // 'grid' o 'list'
-let currentPosterSize = 'medium'; // 'small', 'medium', 'large'
+let currentFilterRating = 0; // NUEVO: 0 = Todas, 6 = 6+, 8 = 8+
+let currentLayoutMode = 'grid'; 
+let currentPosterSize = 'medium'; 
 
 // ELEMENTOS DOM
 const searchInput = document.getElementById('searchInput');
@@ -33,6 +34,12 @@ const viewList = document.getElementById('viewList');
 const btnNavSearch = document.getElementById('btnNavSearch');
 const btnNavList = document.getElementById('btnNavList');
 const myListGrid = document.getElementById('myListGrid');
+
+// Modal de Importación
+const modalImport = document.getElementById('modalImport');
+const importTextarea = document.getElementById('importTextarea');
+const importStatus = document.getElementById('importStatus');
+const btnProcesarImport = document.getElementById('btnProcesarImport');
 
 // Modal de Detalle
 const modalDetalle = document.getElementById('modalDetalle');
@@ -65,6 +72,7 @@ async function postLoginSetup() {
     loginForm.classList.add('hidden');
     userLogged.classList.remove('hidden');
     await actualizarIdsLocales(); 
+    btnNavList.click(); // INICIO POR DEFECTO: Fuerza el clic para entrar en "Mi Lista"
 }
 
 logoutBtn.addEventListener('click', async () => {
@@ -72,7 +80,7 @@ logoutBtn.addEventListener('click', async () => {
     usuarioActual = null; miListaTMDBIDs = []; miBibliotecaLocal = [];
     userLogged.classList.add('hidden'); loginForm.classList.remove('hidden');
     emailInput.value = ''; passInput.value = '';
-    btnNavSearch.click(); 
+    btnNavList.click(); // Al salir de sesión limpia y vuelve a Mi Lista (que mostrará "Aún no has guardado")
     resultsGrid.innerHTML = ''; myListGrid.innerHTML = '';
 });
 
@@ -94,6 +102,67 @@ btnNavList.addEventListener('click', () => {
     btnNavSearch.classList.replace('bg-indigo-600', 'bg-gray-700');
     cargarMiLista();
 });
+
+
+// --- IMPORTACIÓN MASIVA (NUEVO) ---
+function abrirModalImportacion() {
+    if (!usuarioActual) return alert("¡Inicia sesión primero!");
+    modalImport.classList.remove('hidden');
+    importTextarea.value = '';
+    importStatus.classList.add('hidden');
+    btnProcesarImport.disabled = false;
+    btnProcesarImport.classList.remove('opacity-50');
+    btnProcesarImport.onclick = procesarImportacion;
+    btnProcesarImport.textContent = "Comenzar Importación";
+}
+
+function cerrarModalImportacion() { modalImport.classList.add('hidden'); }
+
+async function procesarImportacion() {
+    const lineas = importTextarea.value.split('\n').map(l => l.trim()).filter(l => l.length > 0);
+    if (lineas.length === 0) return alert("Pega al menos un título.");
+    
+    btnProcesarImport.disabled = true;
+    btnProcesarImport.classList.add('opacity-50');
+    importStatus.classList.remove('hidden');
+    
+    let procesados = 0;
+    let encontrados = 0;
+
+    for (const titulo of lineas) {
+        importStatus.textContent = `Buscando "${titulo}" (${procesados + 1}/${lineas.length})...`;
+        
+        try {
+            const res = await fetch(`https://api.themoviedb.org/3/search/multi?query=${encodeURIComponent(titulo)}&language=es-ES&page=1`, { headers: { Authorization: `Bearer ${TMDB_TOKEN}` } });
+            const data = await res.json();
+            const resultadosValidos = data.results.filter(item => item.media_type === 'movie' || item.media_type === 'tv');
+            
+            if (resultadosValidos.length > 0) {
+                const item = resultadosValidos[0]; // Nos quedamos con el mejor resultado
+                
+                if (!miListaTMDBIDs.includes(item.id)) {
+                    await clienteSupabase.from('items').insert({ tmdb_id: item.id, title: item.title || item.name, type: item.media_type, poster_path: item.poster_path });
+                    const { data: dbItem } = await clienteSupabase.from('items').select('id').eq('tmdb_id', item.id).eq('type', item.media_type).single();
+                    await clienteSupabase.from('user_tracking').insert({ user_id: usuarioActual.id, item_id: dbItem.id, status: 'pendiente' });
+                    
+                    miListaTMDBIDs.push(item.id);
+                    encontrados++;
+                }
+            }
+        } catch(e) { console.error(`Error con ${titulo}:`, e); }
+        
+        procesados++;
+    }
+    
+    importStatus.textContent = `¡Importación completada! Se añadieron ${encontrados} títulos nuevos a tu lista.`;
+    btnProcesarImport.textContent = "Cerrar y ver mi lista";
+    btnProcesarImport.disabled = false;
+    btnProcesarImport.classList.remove('opacity-50');
+    btnProcesarImport.onclick = () => {
+        cerrarModalImportacion();
+        cargarMiLista(); // Recargar la lista principal para ver las novedades
+    };
+}
 
 
 // --- BÚSQUEDA TMDB ---
@@ -171,6 +240,16 @@ document.querySelectorAll('.filter-status-btn').forEach(btn => {
     });
 });
 
+// NUEVO: Filtros de Valoración
+document.querySelectorAll('.filter-rating-btn').forEach(btn => {
+    btn.addEventListener('click', (e) => {
+        document.querySelectorAll('.filter-rating-btn').forEach(b => b.className = 'filter-rating-btn px-3 py-1.5 rounded-lg text-xs font-bold transition-all bg-gray-800 text-gray-300 hover:bg-gray-700');
+        e.target.className = 'filter-rating-btn px-3 py-1.5 rounded-lg text-xs font-bold transition-all bg-indigo-600 text-white shadow';
+        currentFilterRating = parseFloat(e.target.getAttribute('data-filter-rating'));
+        aplicarFiltrosYDiseño();
+    });
+});
+
 document.querySelectorAll('.size-btn').forEach(btn => {
     btn.addEventListener('click', (e) => {
         document.querySelectorAll('.size-btn').forEach(b => b.className = 'size-btn px-2.5 py-1 rounded-lg text-xs font-bold bg-gray-800 text-gray-300 hover:bg-gray-700');
@@ -232,7 +311,7 @@ async function borrarDeMiLista(tracking_id, tmdb_id, titulo) {
 }
 
 
-// --- PESTAÑA MI LISTA CON DETALLES EXTENDIDOS (TMDB) ---
+// --- PESTAÑA MI LISTA CON DETALLES EXTENDIDOS ---
 async function cargarMiLista() {
     if (!usuarioActual) return;
     myListGrid.innerHTML = '<p class="text-indigo-400 col-span-full text-center py-8">Cargando biblioteca personal...</p>';
@@ -246,7 +325,6 @@ async function cargarMiLista() {
         return myListGrid.innerHTML = '<p class="text-gray-400 col-span-full text-center py-8">Aún no has guardado elementos.</p>';
     }
 
-    // Traemos datos complementarios en paralelo de TMDB (puntuación, temporadas, estado emisión)
     myListGrid.innerHTML = '<p class="text-indigo-400 col-span-full text-center py-8 animate-pulse">Obteniendo detalles actualizados...</p>';
     
     miBibliotecaLocal = await Promise.all(data.map(async (registro) => {
@@ -277,7 +355,15 @@ function aplicarFiltrosYDiseño() {
     const dataFiltrada = miBibliotecaLocal.filter(registro => {
         const matchType = currentFilterType === 'all' || registro.items.type === currentFilterType;
         const matchStatus = currentFilterStatus === 'all' || registro.status === currentFilterStatus;
-        return matchType && matchStatus;
+        
+        // Comprobar filtro de nota
+        let matchRating = true;
+        if (currentFilterRating > 0) {
+            const r = parseFloat(registro.details.rating);
+            if (isNaN(r) || r < currentFilterRating) matchRating = false;
+        }
+
+        return matchType && matchStatus && matchRating;
     });
 
     pintarMiLista(dataFiltrada);
@@ -286,7 +372,6 @@ function aplicarFiltrosYDiseño() {
 function pintarMiLista(dataArray) {
     myListGrid.innerHTML = '';
     
-    // Ajustar clases del contenedor según el diseño
     if (currentLayoutMode === 'list') {
         myListGrid.className = 'flex flex-col gap-4';
     } else {
@@ -303,7 +388,6 @@ function pintarMiLista(dataArray) {
         const details = registro.details;
         const imgUrl = item.poster_path ? `https://image.tmdb.org/t/p/w500${item.poster_path}` : 'https://via.placeholder.com/500x750/1f2937/ffffff?text=Sin+Poster';
         
-        // Etiqueta de Temporadas y Estado de la Serie
         let badgeSerie = '';
         if (item.type === 'tv') {
             const estadoTexto = details.is_ended ? '🔴 Finalizada' : '🟢 En emisión';
@@ -312,7 +396,6 @@ function pintarMiLista(dataArray) {
 
         const card = document.createElement('div');
         
-        // MODO LISTA (Horizontal)
         if (currentLayoutMode === 'list') {
             card.className = 'bg-gray-800 rounded-2xl overflow-hidden shadow border border-gray-700/80 flex flex-row items-center p-3 gap-4 hover:border-indigo-500 transition-all cursor-pointer';
             card.onclick = () => abrirModalDetalleDesdeLista(registro.id);
@@ -336,9 +419,7 @@ function pintarMiLista(dataArray) {
                     </select>
                 </div>
             `;
-        } 
-        // MODO CUADRÍCULA (Grid)
-        else {
+        } else {
             card.className = 'bg-gray-800 rounded-2xl overflow-hidden shadow border border-gray-700/80 flex flex-col hover:border-indigo-500 transition-all cursor-pointer group';
             card.onclick = () => abrirModalDetalleDesdeLista(registro.id);
             
@@ -429,7 +510,6 @@ function abrirModalDetalleDesdeLista(tracking_id) {
         ? `<button onclick="cerrarModalDetalle(); abrirModalSeries(${item.tmdb_id}, '${registro.id}', '${item.title.replace(/'/g, "\\'")}')" class="flex-grow bg-indigo-900 hover:bg-indigo-700 text-indigo-100 py-3 rounded-xl text-sm font-bold transition-colors">📋 Ver Capítulos</button>` 
         : '';
 
-    // AQUÍ ESTÁ EL BOTÓN DE ELIMINAR PROTEGIDO DENTRO DE LA FICHA
     detailActions.innerHTML = `
         ${botonCapitulos}
         <button onclick="borrarDeMiLista('${registro.id}', ${item.tmdb_id}, '${item.title.replace(/'/g, "\\'")}')" class="bg-red-600/20 hover:bg-red-600 text-red-400 hover:text-white border border-red-600/40 px-5 py-3 rounded-xl text-sm font-bold transition-colors flex items-center justify-center gap-2">
