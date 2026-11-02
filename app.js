@@ -269,3 +269,107 @@ async function cambiarEstado(tracking_id, nuevoEstado) {
         console.log(`Estado actualizado a ${nuevoEstado}`);
     }
 }
+// --- LÓGICA DE LAS SERIES (MODAL, TMDB Y SUPABASE) ---
+
+let vistosTemporal = []; // Guardará en memoria los capítulos ya vistos para no consultar a la BD constantemente
+
+function cerrarModal() {
+    document.getElementById('modalEpisodios').classList.add('hidden');
+}
+
+async function abrirModalSeries(tmdb_id, tracking_id, titulo) {
+    const modalEpisodios = document.getElementById('modalEpisodios');
+    const modalTitle = document.getElementById('modalTitle');
+    const modalContent = document.getElementById('modalContent');
+    
+    modalEpisodios.classList.remove('hidden');
+    modalTitle.textContent = titulo;
+    modalContent.innerHTML = '<p class="text-center text-indigo-400">Cargando datos de la serie...</p>';
+
+    try {
+        // 1. Pedir a TMDB las temporadas que tiene esta serie
+        const resTMDB = await fetch(`https://api.themoviedb.org/3/tv/${tmdb_id}?language=es-ES`, {
+            headers: { Authorization: `Bearer ${TMDB_TOKEN}` }
+        });
+        const serieData = await resTMDB.json();
+
+        // 2. Pedir a Supabase TODOS los capítulos que ya has visto de esta serie
+        const { data: vistosDB } = await clienteSupabase
+            .from('user_episodes')
+            .select('season_number, episode_number')
+            .eq('tracking_id', tracking_id);
+        
+        vistosTemporal = vistosDB || [];
+
+        // 3. Pintar los "botones acordeón" de las temporadas
+        modalContent.innerHTML = '';
+        
+        // Filtramos t.season_number > 0 para quitar los extras/especiales
+        serieData.seasons.filter(t => t.season_number > 0).forEach(temp => {
+            modalContent.innerHTML += `
+                <div class="mb-3 border border-gray-700 rounded overflow-hidden shadow-sm">
+                    <button onclick="cargarEpisodios(this, ${tmdb_id}, ${temp.season_number}, '${tracking_id}')" 
+                            class="w-full bg-gray-700 hover:bg-gray-600 p-4 text-left font-bold flex justify-between items-center transition-colors">
+                        <span class="text-white">Temporada ${temp.season_number}</span>
+                        <span class="text-xs font-normal bg-gray-800 px-2 py-1 rounded text-gray-300">${temp.episode_count} cap.</span>
+                    </button>
+                    <!-- Div oculto donde se cargarán los capítulos al hacer clic -->
+                    <div class="capitulos-container hidden p-2 bg-gray-900 grid gap-1"></div>
+                </div>
+            `;
+        });
+    } catch(error) {
+        console.error(error);
+        modalContent.innerHTML = '<p class="text-red-400 text-center">Error de conexión al cargar las temporadas.</p>';
+    }
+}
+
+async function cargarEpisodios(botonAcordeon, tmdb_id, season_number, tracking_id) {
+    const contenedor = botonAcordeon.nextElementSibling; 
+    
+    // Efecto Acordeón: Si ya tiene contenido, solo lo ocultamos/mostramos sin gastar llamadas a la API
+    if (contenedor.innerHTML !== '') {
+        contenedor.classList.toggle('hidden');
+        return;
+    }
+    
+    contenedor.classList.remove('hidden');
+    contenedor.innerHTML = '<p class="text-sm text-gray-400 p-2">Buscando capítulos...</p>';
+
+    // Pedimos los nombres de los capítulos de esta temporada a TMDB
+    const res = await fetch(`https://api.themoviedb.org/3/tv/${tmdb_id}/season/${season_number}?language=es-ES`, {
+        headers: { Authorization: `Bearer ${TMDB_TOKEN}` }
+    });
+    const data = await res.json();
+    
+    contenedor.innerHTML = '';
+    data.episodes.forEach(ep => {
+        // Comprobamos si las variables coinciden con lo que trajimos de Supabase antes
+        const estaVisto = vistosTemporal.some(v => v.season_number === season_number && v.episode_number === ep.episode_number);
+        
+        contenedor.innerHTML += `
+            <label class="flex items-center gap-3 p-3 hover:bg-gray-800 rounded transition-colors cursor-pointer border-b border-gray-800 last:border-0">
+                <input type="checkbox" ${estaVisto ? 'checked' : ''} 
+                       onchange="marcarCapitulo('${tracking_id}', ${season_number}, ${ep.episode_number}, this.checked)"
+                       class="w-5 h-5 accent-indigo-500 rounded cursor-pointer flex-shrink-0">
+                <span class="text-sm font-semibold text-gray-500 w-6 flex-shrink-0">${ep.episode_number}.</span>
+                <span class="text-sm text-gray-200 line-clamp-1">${ep.name}</span>
+            </label>
+        `;
+    });
+}
+
+async function marcarCapitulo(tracking_id, season_number, episode_number, isChecked) {
+    // En base al checkbox, insertamos la fila en Supabase o la borramos
+    if (isChecked) {
+        await clienteSupabase.from('user_episodes').insert({
+            tracking_id, season_number, episode_number
+        });
+        console.log(`Capítulo ${episode_number} insertado en BBDD.`);
+    } else {
+        await clienteSupabase.from('user_episodes')
+            .delete()
+            .match({ tracking_id, season_number, episode_number });
+        console.log(`Capítulo ${episode_number} borrado de BBDD.`);
+    }
+}
