@@ -23,7 +23,7 @@ let currentLayoutMode = 'grid';
 let currentPosterSize = 'medium'; 
 
 // ELEMENTOS DOM
-const authPanel = document.getElementById('authPanel'); // Capturamos el panel completo
+const authPanel = document.getElementById('authPanel');
 const searchInput = document.getElementById('searchInput');
 const searchBtn = document.getElementById('searchBtn');
 const resultsGrid = document.getElementById('resultsGrid');
@@ -58,14 +58,6 @@ const detailRecommendations = document.getElementById('detailRecommendations');
 const modalEpisodios = document.getElementById('modalEpisodios');
 
 
-// --- CLASES DE ESTILOS PARA EL CENTRO DE CONTROL UI ---
-const pillActiveClass = 'px-4 py-2 rounded-xl text-xs font-bold transition-all bg-indigo-500 text-white shadow-md shadow-indigo-900/30';
-const pillInactiveClass = 'px-4 py-2 rounded-xl text-xs font-bold transition-all bg-transparent text-gray-400 hover:text-gray-100 hover:bg-gray-700/50';
-
-const searchPillActive = 'px-3 py-1.5 rounded-xl text-xs font-bold bg-indigo-500 text-white shadow-md transition-all';
-const searchPillInactive = 'px-3 py-1.5 rounded-xl text-xs font-bold bg-transparent text-gray-400 hover:bg-gray-700/50 transition-all';
-
-
 // --- AUTENTICACIÓN ---
 async function iniciarSesion() {
     const email = emailInput.value;
@@ -81,7 +73,7 @@ async function comprobarSesion() {
 }
 
 async function postLoginSetup() {
-    authPanel.classList.add('hidden'); // Oculta TODO el contenedor de login
+    authPanel.classList.add('hidden'); 
     userLogged.classList.remove('hidden');
     await actualizarIdsLocales(); 
     btnNavList.click(); 
@@ -90,8 +82,8 @@ async function postLoginSetup() {
 logoutBtn.addEventListener('click', async () => {
     await clienteSupabase.auth.signOut();
     usuarioActual = null; miListaTMDBIDs = []; miBibliotecaLocal = [];
-    authPanel.classList.remove('hidden'); // Muestra panel
-    userLogged.classList.add('hidden'); // Oculta controles superiores
+    authPanel.classList.remove('hidden'); 
+    userLogged.classList.add('hidden'); 
     emailInput.value = ''; passInput.value = '';
     btnNavList.click(); 
     resultsGrid.innerHTML = ''; myListGrid.innerHTML = '';
@@ -199,8 +191,12 @@ searchInput.addEventListener('keypress', (e) => { if (e.key === 'Enter') ejecuta
 
 document.querySelectorAll('.search-sort-btn').forEach(btn => {
     btn.addEventListener('click', (e) => {
-        document.querySelectorAll('.search-sort-btn').forEach(b => b.className = `search-sort-btn ${searchPillInactive}`);
-        e.target.className = `search-sort-btn ${searchPillActive}`;
+        document.querySelectorAll('.search-sort-btn').forEach(b => {
+            b.classList.remove('pill-active');
+            b.classList.add('pill-inactive');
+        });
+        e.target.classList.remove('pill-inactive');
+        e.target.classList.add('pill-active');
         currentSearchSort = e.target.getAttribute('data-search-sort');
         renderResults(pelisYSeries);
     });
@@ -251,13 +247,15 @@ function renderResults(resultados) {
 }
 
 
-// --- GESTIÓN VISUAL DEL CENTRO DE CONTROL DE MI LISTA ---
+// --- GESTIÓN VISUAL DEL CENTRO DE CONTROL (CORREGIDO) ---
 function updateBtnClasses(selector, activeValue, dataAttr) {
     document.querySelectorAll(selector).forEach(btn => {
         if(btn.getAttribute(dataAttr) == activeValue) {
-            btn.className = `${selector.replace('.','')} ${pillActiveClass}`;
+            btn.classList.add('pill-active');
+            btn.classList.remove('pill-inactive');
         } else {
-            btn.className = `${selector.replace('.','')} ${pillInactiveClass}`;
+            btn.classList.add('pill-inactive');
+            btn.classList.remove('pill-active');
         }
     });
 }
@@ -303,14 +301,18 @@ const btnViewList = document.getElementById('btnViewList');
 
 btnViewGrid.addEventListener('click', () => {
     currentLayoutMode = 'grid';
-    btnViewGrid.className = `layout-btn ${pillActiveClass}`;
-    btnViewList.className = `layout-btn ${pillInactiveClass}`;
+    btnViewGrid.classList.add('pill-active');
+    btnViewGrid.classList.remove('pill-inactive');
+    btnViewList.classList.add('pill-inactive');
+    btnViewList.classList.remove('pill-active');
     aplicarFiltrosYDiseño();
 });
 btnViewList.addEventListener('click', () => {
     currentLayoutMode = 'list';
-    btnViewList.className = `layout-btn ${pillActiveClass}`;
-    btnViewGrid.className = `layout-btn ${pillInactiveClass}`;
+    btnViewList.classList.add('pill-active');
+    btnViewList.classList.remove('pill-inactive');
+    btnViewGrid.classList.add('pill-inactive');
+    btnViewGrid.classList.remove('pill-active');
     aplicarFiltrosYDiseño();
 });
 
@@ -535,9 +537,14 @@ async function cargarRecomendaciones(tmdb_id, tipo) {
         data.results.slice(0, 10).forEach(rec => {
             const img = rec.poster_path ? `https://image.tmdb.org/t/p/w200${rec.poster_path}` : 'https://via.placeholder.com/200x300/1f2937/ffffff?text=X';
             const recTipo = rec.media_type || tipo;
+            const rating = rec.vote_average ? rec.vote_average.toFixed(1) : '-';
+            
             detailRecommendations.innerHTML += `
                 <div class="flex-shrink-0 w-24 cursor-pointer group" onclick="abrirModalDetalleDirecto(${rec.id}, '${recTipo}')">
-                    <img src="${img}" class="w-full h-36 object-cover rounded-xl shadow-md border border-transparent group-hover:border-indigo-500 transition-all">
+                    <div class="relative">
+                        <img src="${img}" class="w-full h-36 object-cover rounded-xl shadow-md border border-transparent group-hover:border-indigo-500 transition-all">
+                        <span class="absolute top-1 right-1 bg-black/80 backdrop-blur-md text-yellow-400 text-[9px] font-bold px-1.5 py-0.5 rounded shadow-md border border-yellow-500/20">⭐ ${rating}</span>
+                    </div>
                     <p class="text-[10px] font-semibold text-gray-400 mt-2 truncate group-hover:text-indigo-400">${rec.title || rec.name}</p>
                 </div>
             `;
@@ -739,7 +746,6 @@ function evaluarBotonSerieCompleta(tracking_id, tmdb_id, titulo) {
         btnMarcarSerie.disabled = false;
         btnMarcarSerie.className = "bg-green-700 hover:bg-green-600 text-white text-xs md:text-sm font-bold py-2.5 px-4 rounded-xl shadow transition-colors";
         
-        // CORRECCIÓN VITAL: Sincronizar DB + Forzar recarga total en UI
         btnMarcarSerie.onclick = async () => {
             btnMarcarSerie.textContent = "⌛ Guardando...";
             btnMarcarSerie.disabled = true;
@@ -747,7 +753,7 @@ function evaluarBotonSerieCompleta(tracking_id, tmdb_id, titulo) {
             await clienteSupabase.from('user_tracking').update({ status: 'vista' }).eq('id', tracking_id);
             alert(`¡Has marcado toda la serie "${titulo}" como Vista!`);
             cerrarModal();
-            cargarMiLista(); // <--- Esto asegura que la vista principal se sincronice perfecta y de inmediato
+            cargarMiLista(); 
         };
     }
 }
@@ -858,6 +864,5 @@ async function evaluarEstadoSerieDesdeEpisodios(tracking_id, tmdb_id) {
     const titulo = document.getElementById('modalTitle').textContent;
     evaluarBotonSerieCompleta(tracking_id, tmdb_id, titulo);
     
-    // ACTIVA LA ACTUALIZACIÓN EN LA VISTA PRINCIPAL
     aplicarFiltrosYDiseño(); 
 }
