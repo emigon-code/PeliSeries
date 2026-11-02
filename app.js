@@ -160,3 +160,103 @@ async function añadirALista(tmdb_id) {
         alert(`✅ "${titulo}" guardada como Pendiente`);
     }
 }
+// --- NUEVAS VARIABLES DEL DOM ---
+const viewSearch = document.getElementById('viewSearch');
+const viewList = document.getElementById('viewList');
+const btnNavSearch = document.getElementById('btnNavSearch');
+const btnNavList = document.getElementById('btnNavList');
+const myListGrid = document.getElementById('myListGrid');
+
+// --- LÓGICA DE NAVEGACIÓN ---
+btnNavSearch.addEventListener('click', () => {
+    viewSearch.classList.remove('hidden');
+    viewList.classList.add('hidden');
+    btnNavSearch.classList.replace('bg-gray-700', 'bg-indigo-600');
+    btnNavList.classList.replace('bg-indigo-600', 'bg-gray-700');
+});
+
+btnNavList.addEventListener('click', () => {
+    viewSearch.classList.add('hidden');
+    viewList.classList.remove('hidden');
+    btnNavList.classList.replace('bg-gray-700', 'bg-indigo-600');
+    btnNavSearch.classList.replace('bg-indigo-600', 'bg-gray-700');
+    cargarMiLista(); // Cargamos la base de datos al entrar en la pestaña
+});
+
+// --- CARGAR Y PINTAR MI LISTA ---
+async function cargarMiLista() {
+    if (!usuarioActual) return;
+    
+    myListGrid.innerHTML = '<p class="text-indigo-400 col-span-full text-center">Cargando tu biblioteca...</p>';
+
+    // La magia relacional de Supabase: Trae el tracking y la información del item unido
+    const { data, error } = await clienteSupabase
+        .from('user_tracking')
+        .select(`
+            id,
+            status,
+            items ( id, title, type, poster_path )
+        `)
+        .eq('user_id', usuarioActual.id)
+        .order('created_at', { ascending: false });
+
+    if (error) {
+        console.error(error);
+        myListGrid.innerHTML = '<p class="text-red-400 col-span-full text-center">Error al cargar la lista.</p>';
+        return;
+    }
+
+    pintarMiLista(data);
+}
+
+function pintarMiLista(registros) {
+    myListGrid.innerHTML = '';
+    if (registros.length === 0) {
+        myListGrid.innerHTML = '<p class="text-gray-400 col-span-full text-center">Aún no has guardado nada.</p>';
+        return;
+    }
+
+    registros.forEach(registro => {
+        // Extraemos los datos cruzados
+        const item = registro.items; 
+        const imgUrl = item.poster_path ? `https://image.tmdb.org/t/p/w500${item.poster_path}` : 'https://via.placeholder.com/500x750/1f2937/ffffff?text=Sin+Póster';
+        const tipo = item.type === 'movie' ? 'Película' : 'Serie';
+        const colorTipo = item.type === 'movie' ? 'text-blue-400' : 'text-green-400';
+
+        const card = document.createElement('div');
+        card.className = 'bg-gray-800 rounded-xl overflow-hidden shadow border border-gray-700 flex flex-col';
+        card.innerHTML = `
+            <img src="${imgUrl}" alt="${item.title}" class="w-full h-auto object-cover aspect-[2/3]">
+            <div class="p-4 flex flex-col flex-grow">
+                <span class="text-xs font-bold uppercase tracking-wider ${colorTipo}">${tipo}</span>
+                <h3 class="font-bold text-lg leading-tight mt-1 mb-3 line-clamp-2">${item.title}</h3>
+                
+                <div class="mt-auto">
+                    <label class="text-xs text-gray-400 uppercase font-bold">Estado:</label>
+                    <select onchange="cambiarEstado('${registro.id}', this.value)" 
+                            class="w-full mt-1 bg-gray-700 text-white text-sm rounded p-2 focus:ring-indigo-500 border-none outline-none cursor-pointer">
+                        <option value="pendiente" ${registro.status === 'pendiente' ? 'selected' : ''}>Pendiente</option>
+                        <option value="viendo" ${registro.status === 'viendo' ? 'selected' : ''}>Viendo</option>
+                        <option value="vista" ${registro.status === 'vista' ? 'selected' : ''}>Vista</option>
+                    </select>
+                </div>
+            </div>
+        `;
+        myListGrid.appendChild(card);
+    });
+}
+
+// --- CAMBIAR EL ESTADO ---
+async function cambiarEstado(tracking_id, nuevoEstado) {
+    const { error } = await clienteSupabase
+        .from('user_tracking')
+        .update({ status: nuevoEstado })
+        .eq('id', tracking_id);
+
+    if (error) {
+        alert("Error al actualizar el estado");
+        console.error(error);
+    } else {
+        console.log(`Estado actualizado a ${nuevoEstado}`);
+    }
+}
