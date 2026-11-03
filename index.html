@@ -9,7 +9,7 @@
     <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
     <style>
         body { background-color: #0b0f17; }
-        .custom-scrollbar::-webkit-scrollbar { height: 4px; width: 6px; }
+        .custom-scrollbar::-webkit-scrollbar { height: 6px; width: 6px; }
         .custom-scrollbar::-webkit-scrollbar-thumb { background-color: #4B5563; border-radius: 10px; }
         .glass-panel { background: rgba(17, 24, 39, 0.75); backdrop-filter: blur(20px); -webkit-backdrop-filter: blur(20px); border: 1px solid rgba(255, 255, 255, 0.08); box-shadow: 0 20px 40px rgba(0,0,0,0.4); }
         .glass-inset { background: rgba(11, 15, 23, 0.85); border: 1px solid rgba(255, 255, 255, 0.05); box-shadow: inset 0 2px 6px rgba(0,0,0,0.5); }
@@ -57,7 +57,7 @@
             </div>
         </div>
 
-        <!-- VISTA 1: BUSCADOR -->
+        <!-- VISTA 1: BUSCADOR GLOBAL -->
         <div id="viewSearch" class="hidden">
             <div class="flex flex-col md:flex-row gap-3 mb-8 max-w-4xl mx-auto items-center glass-panel p-3 rounded-2xl">
                 <div class="flex gap-2 w-full">
@@ -73,8 +73,8 @@
             <!-- Ordenación en Buscador -->
             <div id="searchSortBar" class="hidden max-w-4xl mx-auto mb-6 flex justify-end items-center">
                 <div class="flex items-center glass-inset p-1.5 rounded-2xl gap-1">
-                    <button data-search-sort="title" class="search-sort-btn px-3.5 py-1.5 rounded-xl text-xs font-bold bg-transparent text-gray-400 hover:text-white transition-all">🔤 Título</button>
-                    <button data-search-sort="rating" class="search-sort-btn px-3.5 py-1.5 rounded-xl text-xs font-bold bg-gradient-to-r from-indigo-500 to-purple-600 text-white shadow-md transition-all">⭐ Nota</button>
+                    <button data-search-sort="title" class="search-sort-btn px-4 py-2 rounded-xl text-sm font-bold bg-transparent text-gray-400 hover:text-white transition-all">🔤 Título</button>
+                    <button data-search-sort="rating" class="search-sort-btn px-4 py-2 rounded-xl text-sm font-bold bg-gradient-to-r from-indigo-500 to-purple-600 text-white shadow-md transition-all">⭐ Nota TMDB</button>
                 </div>
             </div>
 
@@ -84,42 +84,59 @@
         <!-- VISTA 2: MI LISTA -->
         <div id="viewList">
             
-            <!-- CENTRO DE CONTROL COMPACTO Y HORIZONTAL REDISEÑADO -->
-            <div class="glass-panel p-2.5 md:p-3 rounded-2xl mb-8 flex flex-row items-center gap-4 overflow-x-auto custom-scrollbar whitespace-nowrap shadow-xl">
+            <!-- CENTRO DE CONTROL REDISEÑADO CON BUSCADOR Y TAMAÑOS GRANDES -->
+            <div class="glass-panel p-3 md:p-4 rounded-2xl mb-8 flex flex-col md:flex-row items-center justify-between gap-4 shadow-xl">
                 
-                <!-- Categoría (Múltiple) -->
-                <div class="flex items-center glass-inset p-1 rounded-xl gap-1 shadow-inner shrink-0">
-                    <button data-filter-type="movie" class="filter-type-btn px-3 py-1.5 rounded-lg text-xs font-bold transition-all bg-gradient-to-r from-indigo-500 to-purple-600 text-white shadow-md flex items-center gap-1.5"><span class="text-base">🍿</span> Pelis</button>
-                    <button data-filter-type="tv" class="filter-type-btn px-3 py-1.5 rounded-lg text-xs font-bold transition-all bg-gradient-to-r from-indigo-500 to-purple-600 text-white shadow-md flex items-center gap-1.5"><span class="text-base">📺</span> Series</button>
+                <div class="flex flex-row items-center gap-3 overflow-x-auto custom-scrollbar whitespace-nowrap w-full pb-2 md:pb-0">
+                    
+                    <!-- Categoría (Múltiple) -->
+                    <div class="flex items-center glass-inset p-1 rounded-2xl gap-1 shadow-inner shrink-0">
+                        <button data-filter-type="movie" class="filter-type-btn px-4 py-2 rounded-xl text-sm font-bold transition-all bg-gradient-to-r from-indigo-500 to-purple-600 text-white shadow-md flex items-center gap-2"><span class="text-lg">🍿</span> Pelis</button>
+                        <button data-filter-type="tv" class="filter-type-btn px-4 py-2 rounded-xl text-sm font-bold transition-all bg-gradient-to-r from-indigo-500 to-purple-600 text-white shadow-md flex items-center gap-2"><span class="text-lg">📺</span> Series</button>
+                    </div>
+
+                    <!-- Progreso -->
+                    <div class="flex items-center glass-inset p-1 rounded-2xl gap-1 shadow-inner shrink-0">
+                        <button data-filter-status="all" class="filter-status-btn px-4 py-2 rounded-xl text-sm font-bold transition-all bg-gradient-to-r from-indigo-500 to-purple-600 text-white shadow-md flex items-center gap-2"><span class="text-lg">♾️</span></button>
+                        <button data-filter-status="pendiente" class="filter-status-btn px-4 py-2 rounded-xl text-sm font-bold transition-all bg-transparent text-gray-400 hover:bg-white/5 flex items-center gap-2"><span class="text-lg">⏳</span> Ptes</button>
+                        <button data-filter-status="viendo" class="filter-status-btn px-4 py-2 rounded-xl text-sm font-bold transition-all bg-transparent text-gray-400 hover:bg-white/5 flex items-center gap-2"><span class="text-lg">👀</span> Viendo</button>
+                        <button data-filter-status="vista" class="filter-status-btn px-4 py-2 rounded-xl text-sm font-bold transition-all bg-transparent text-gray-400 hover:bg-white/5 flex items-center gap-2"><span class="text-lg">✅</span> Vistas</button>
+                    </div>
+
+                    <!-- Valoración TMDB (Toggle) -->
+                    <div class="flex items-center glass-inset p-1 rounded-2xl gap-1 shadow-inner shrink-0">
+                        <button id="btnFilterRating" class="px-4 py-2 rounded-xl text-sm font-bold transition-all bg-transparent text-gray-400 hover:bg-white/5 flex items-center gap-2">
+                            <span class="text-lg text-yellow-400">⭐</span> TMDB 8+
+                        </button>
+                    </div>
+
+                    <!-- Valoración Personal (Toggle) -->
+                    <div class="flex items-center glass-inset p-1 rounded-2xl gap-1 shadow-inner shrink-0">
+                        <button id="btnFilterMyRating" class="px-4 py-2 rounded-xl text-sm font-bold transition-all bg-transparent text-gray-400 hover:bg-white/5 flex items-center gap-2">
+                            <span class="text-lg text-blue-400">★</span> Mi Nota 8+
+                        </button>
+                    </div>
+
+                    <div class="w-px h-8 bg-gray-700/80 shrink-0 mx-2"></div>
+
+                    <!-- Ordenar -->
+                    <div class="flex items-center glass-inset p-1 rounded-2xl gap-1 shadow-inner shrink-0">
+                        <button data-sort="recent" class="sort-btn px-4 py-2 rounded-xl text-sm font-bold transition-all bg-gradient-to-r from-indigo-500 to-purple-600 text-white shadow-md flex items-center gap-2"><span class="text-lg">🕒</span> Recientes</button>
+                        <button data-sort="title" class="sort-btn px-4 py-2 rounded-xl text-sm font-bold transition-all bg-transparent text-gray-400 hover:bg-white/5 flex items-center gap-2"><span class="text-lg">🔤</span> A-Z</button>
+                        <button data-sort="rating" class="sort-btn px-4 py-2 rounded-xl text-sm font-bold transition-all bg-transparent text-gray-400 hover:bg-white/5 flex items-center gap-2"><span class="text-lg text-yellow-400">⭐</span> Nota</button>
+                    </div>
                 </div>
 
-                <!-- Progreso -->
-                <div class="flex items-center glass-inset p-1 rounded-xl gap-1 shadow-inner shrink-0">
-                    <button data-filter-status="all" class="filter-status-btn px-3 py-1.5 rounded-lg text-xs font-bold transition-all bg-gradient-to-r from-indigo-500 to-purple-600 text-white shadow-md flex items-center gap-1.5"><span class="text-base">♾️</span></button>
-                    <button data-filter-status="pendiente" class="filter-status-btn px-3 py-1.5 rounded-lg text-xs font-bold transition-all bg-transparent text-gray-400 hover:bg-white/5 flex items-center gap-1.5"><span class="text-base">⏳</span> Ptes</button>
-                    <button data-filter-status="viendo" class="filter-status-btn px-3 py-1.5 rounded-lg text-xs font-bold transition-all bg-transparent text-gray-400 hover:bg-white/5 flex items-center gap-1.5"><span class="text-base">👀</span> Viendo</button>
-                    <button data-filter-status="vista" class="filter-status-btn px-3 py-1.5 rounded-lg text-xs font-bold transition-all bg-transparent text-gray-400 hover:bg-white/5 flex items-center gap-1.5"><span class="text-base">✅</span> Vistas</button>
+                <!-- Buscador Local -->
+                <div class="flex items-center glass-inset p-1.5 rounded-2xl shadow-inner shrink-0 w-full md:w-64 border border-gray-600/50 focus-within:border-indigo-500 transition-colors">
+                    <span class="pl-3 pr-2 text-gray-400 text-lg">🔍</span>
+                    <input type="text" id="localSearchInput" placeholder="Buscar en mi lista..." class="bg-transparent text-sm text-white font-semibold focus:outline-none w-full py-1.5 placeholder-gray-500">
                 </div>
 
-                <!-- Valoración (Toggle) -->
-                <div class="flex items-center glass-inset p-1 rounded-xl gap-1 shadow-inner shrink-0">
-                    <button id="btnFilterRating" class="px-3 py-1.5 rounded-lg text-xs font-bold transition-all bg-transparent text-gray-400 hover:bg-white/5 flex items-center gap-1.5">
-                        <span class="text-base">⭐</span> 8+
-                    </button>
-                </div>
-
-                <div class="w-px h-6 bg-gray-700/80 shrink-0 mx-1"></div>
-
-                <!-- Ordenar -->
-                <div class="flex items-center glass-inset p-1 rounded-xl gap-1 shadow-inner shrink-0 ml-auto">
-                    <button data-sort="recent" class="sort-btn px-3 py-1.5 rounded-lg text-xs font-bold transition-all bg-gradient-to-r from-indigo-500 to-purple-600 text-white shadow-md flex items-center gap-1.5"><span class="text-base">🕒</span> Recientes</button>
-                    <button data-sort="title" class="sort-btn px-3 py-1.5 rounded-lg text-xs font-bold transition-all bg-transparent text-gray-400 hover:bg-white/5 flex items-center gap-1.5"><span class="text-base">🔤</span> A-Z</button>
-                    <button data-sort="rating" class="sort-btn px-3 py-1.5 rounded-lg text-xs font-bold transition-all bg-transparent text-gray-400 hover:bg-white/5 flex items-center gap-1.5"><span class="text-base">⭐</span> Nota</button>
-                </div>
             </div>
 
-            <!-- Contenedor Dinámico de Mi Lista -->
-            <div id="myListGrid" class="grid grid-cols-3 sm:grid-cols-4 md:grid-cols-6 lg:grid-cols-7 gap-3 md:gap-4"></div>
+            <!-- Contenedor Dinámico de Mi Lista (Fijo en Cuadrícula Mediana) -->
+            <div id="myListGrid" class="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 gap-4 md:gap-6"></div>
         </div>
 
     </div>
@@ -146,7 +163,10 @@
     <div id="modalDetalle" class="hidden fixed inset-0 bg-black/90 flex justify-center items-center p-4 z-50 backdrop-blur-md transition-opacity">
         <div class="bg-gray-800 rounded-3xl w-full max-w-3xl max-h-[90vh] flex flex-col shadow-2xl border border-gray-700 overflow-hidden">
             <div class="p-4 border-b border-gray-700 flex justify-between items-center bg-gray-800/80">
-                <span id="detailBadgeType" class="text-xs font-bold uppercase px-3 py-1 rounded-full bg-indigo-900/80 text-indigo-300 border border-indigo-700">Película</span>
+                <div class="flex items-center gap-3">
+                    <span id="detailBadgeType" class="text-xs font-bold uppercase px-3 py-1 rounded-full bg-indigo-900/80 text-indigo-300 border border-indigo-700">Película</span>
+                    <span id="detailYear" class="text-sm font-bold text-gray-400"></span>
+                </div>
                 <button onclick="cerrarModalDetalle()" class="text-gray-400 hover:text-white font-bold text-3xl leading-none" title="También puedes pulsar ESC">&times;</button>
             </div>
             <div class="p-6 overflow-y-auto custom-scrollbar flex flex-col">
@@ -156,6 +176,25 @@
                         <h2 id="detailTitle" class="text-2xl lg:text-3xl font-bold text-white mb-2"></h2>
                         <div class="flex flex-wrap items-center gap-3 text-sm text-gray-300 mb-4">
                             <span id="detailRating" class="bg-yellow-500/20 text-yellow-400 px-2.5 py-1 rounded-lg font-bold border border-yellow-500/30">⭐ 0.0</span>
+                            
+                            <!-- NUEVO: Mi Valoración -->
+                            <div id="miValoracionContenedor" class="hidden items-center gap-2 bg-blue-900/20 border border-blue-500/30 px-2.5 py-1 rounded-lg">
+                                <span class="text-xs font-bold text-blue-400 uppercase tracking-widest">Mi Nota:</span>
+                                <select id="detailPersonalRating" onchange="cambiarNotaPersonal(this.value)" class="bg-transparent text-blue-300 text-sm font-bold outline-none cursor-pointer">
+                                    <option value="0" class="bg-gray-800">-</option>
+                                    <option value="1" class="bg-gray-800">1</option>
+                                    <option value="2" class="bg-gray-800">2</option>
+                                    <option value="3" class="bg-gray-800">3</option>
+                                    <option value="4" class="bg-gray-800">4</option>
+                                    <option value="5" class="bg-gray-800">5</option>
+                                    <option value="6" class="bg-gray-800">6</option>
+                                    <option value="7" class="bg-gray-800">7</option>
+                                    <option value="8" class="bg-gray-800">8</option>
+                                    <option value="9" class="bg-gray-800">9</option>
+                                    <option value="10" class="bg-gray-800">10</option>
+                                </select>
+                            </div>
+
                             <span id="detailSeasons" class="hidden bg-gray-700 px-2.5 py-1 rounded-lg font-semibold"></span>
                             <span id="detailStatus" class="hidden px-2.5 py-1 rounded-lg font-semibold"></span>
                         </div>
