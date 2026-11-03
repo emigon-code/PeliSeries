@@ -9,7 +9,6 @@
     <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
     <style>
         body { background-color: #0b0f17; }
-        /* Ajuste del scrollbar para que sea sutil en la barra compacta */
         .custom-scrollbar::-webkit-scrollbar { height: 4px; width: 6px; }
         .custom-scrollbar::-webkit-scrollbar-thumb { background-color: #4B5563; border-radius: 10px; }
         .glass-panel { background: rgba(17, 24, 39, 0.75); backdrop-filter: blur(20px); -webkit-backdrop-filter: blur(20px); border: 1px solid rgba(255, 255, 255, 0.08); box-shadow: 0 20px 40px rgba(0,0,0,0.4); }
@@ -85,14 +84,13 @@
         <!-- VISTA 2: MI LISTA -->
         <div id="viewList">
             
-            <!-- CENTRO DE CONTROL COMPACTO Y HORIZONTAL -->
+            <!-- CENTRO DE CONTROL COMPACTO Y HORIZONTAL REDISEÑADO -->
             <div class="glass-panel p-2.5 md:p-3 rounded-2xl mb-8 flex flex-row items-center gap-4 overflow-x-auto custom-scrollbar whitespace-nowrap shadow-xl">
                 
-                <!-- Categoría -->
+                <!-- Categoría (Múltiple) -->
                 <div class="flex items-center glass-inset p-1 rounded-xl gap-1 shadow-inner shrink-0">
-                    <button data-filter-type="all" class="filter-type-btn px-3 py-1.5 rounded-lg text-xs font-bold transition-all bg-gradient-to-r from-indigo-500 to-purple-600 text-white shadow-md flex items-center gap-1.5"><span class="text-base">♾️</span> Todo</button>
-                    <button data-filter-type="movie" class="filter-type-btn px-3 py-1.5 rounded-lg text-xs font-bold transition-all bg-transparent text-gray-400 hover:bg-white/5 flex items-center gap-1.5"><span class="text-base">🍿</span> Pelis</button>
-                    <button data-filter-type="tv" class="filter-type-btn px-3 py-1.5 rounded-lg text-xs font-bold transition-all bg-transparent text-gray-400 hover:bg-white/5 flex items-center gap-1.5"><span class="text-base">📺</span> Series</button>
+                    <button data-filter-type="movie" class="filter-type-btn px-3 py-1.5 rounded-lg text-xs font-bold transition-all bg-gradient-to-r from-indigo-500 to-purple-600 text-white shadow-md flex items-center gap-1.5"><span class="text-base">🍿</span> Pelis</button>
+                    <button data-filter-type="tv" class="filter-type-btn px-3 py-1.5 rounded-lg text-xs font-bold transition-all bg-gradient-to-r from-indigo-500 to-purple-600 text-white shadow-md flex items-center gap-1.5"><span class="text-base">📺</span> Series</button>
                 </div>
 
                 <!-- Progreso -->
@@ -103,34 +101,25 @@
                     <button data-filter-status="vista" class="filter-status-btn px-3 py-1.5 rounded-lg text-xs font-bold transition-all bg-transparent text-gray-400 hover:bg-white/5 flex items-center gap-1.5"><span class="text-base">✅</span> Vistas</button>
                 </div>
 
-                <!-- Valoración -->
+                <!-- Valoración (Toggle) -->
                 <div class="flex items-center glass-inset p-1 rounded-xl gap-1 shadow-inner shrink-0">
-                    <button data-filter-rating="0" class="filter-rating-btn px-3 py-1.5 rounded-lg text-xs font-bold transition-all bg-gradient-to-r from-indigo-500 to-purple-600 text-white shadow-md">⭐ Todas</button>
-                    <button data-filter-rating="8" class="filter-rating-btn px-3 py-1.5 rounded-lg text-xs font-bold transition-all bg-transparent text-gray-400 hover:bg-white/5">⭐ 8+</button>
-                    <button data-filter-rating="6" class="filter-rating-btn px-3 py-1.5 rounded-lg text-xs font-bold transition-all bg-transparent text-gray-400 hover:bg-white/5">⭐ 6-8</button>
+                    <button id="btnFilterRating" class="px-3 py-1.5 rounded-lg text-xs font-bold transition-all bg-transparent text-gray-400 hover:bg-white/5 flex items-center gap-1.5">
+                        <span class="text-base">⭐</span> 8+
+                    </button>
                 </div>
 
                 <div class="w-px h-6 bg-gray-700/80 shrink-0 mx-1"></div>
 
                 <!-- Ordenar -->
-                <div class="flex items-center glass-inset p-1 rounded-xl gap-1 shadow-inner shrink-0">
-                    <button data-sort="title" class="sort-btn px-3 py-1.5 rounded-lg text-xs font-bold transition-all bg-transparent text-gray-400 hover:bg-white/5 flex items-center gap-1.5"><span class="text-base">🔤</span> A-Z</button>
-                    <button data-sort="rating" class="sort-btn px-3 py-1.5 rounded-lg text-xs font-bold transition-all bg-gradient-to-r from-indigo-500 to-purple-600 text-white shadow-md flex items-center gap-1.5"><span class="text-base">⭐</span> Nota</button>
-                </div>
-
-                <!-- Tamaño y Vista (Agrupados para ahorrar espacio) -->
                 <div class="flex items-center glass-inset p-1 rounded-xl gap-1 shadow-inner shrink-0 ml-auto">
-                    <button data-size="small" class="size-btn px-3 py-1.5 rounded-lg text-[10px] font-bold transition-all bg-transparent text-gray-400 hover:bg-white/5">S</button>
-                    <button data-size="medium" class="size-btn px-3 py-1.5 rounded-lg text-[10px] font-bold transition-all bg-gradient-to-r from-indigo-500 to-purple-600 text-white shadow-md">M</button>
-                    <button data-size="large" class="size-btn px-3 py-1.5 rounded-lg text-[10px] font-bold transition-all bg-transparent text-gray-400 hover:bg-white/5">L</button>
-                    <div class="w-px h-4 bg-gray-700/80 mx-1"></div>
-                    <button id="btnViewGrid" class="layout-btn px-3 py-1.5 rounded-lg text-sm font-bold transition-all bg-gradient-to-r from-indigo-500 to-purple-600 text-white shadow-md">🔲</button>
-                    <button id="btnViewList" class="layout-btn px-3 py-1.5 rounded-lg text-sm font-bold transition-all bg-transparent text-gray-400 hover:bg-white/5">☰</button>
+                    <button data-sort="recent" class="sort-btn px-3 py-1.5 rounded-lg text-xs font-bold transition-all bg-gradient-to-r from-indigo-500 to-purple-600 text-white shadow-md flex items-center gap-1.5"><span class="text-base">🕒</span> Recientes</button>
+                    <button data-sort="title" class="sort-btn px-3 py-1.5 rounded-lg text-xs font-bold transition-all bg-transparent text-gray-400 hover:bg-white/5 flex items-center gap-1.5"><span class="text-base">🔤</span> A-Z</button>
+                    <button data-sort="rating" class="sort-btn px-3 py-1.5 rounded-lg text-xs font-bold transition-all bg-transparent text-gray-400 hover:bg-white/5 flex items-center gap-1.5"><span class="text-base">⭐</span> Nota</button>
                 </div>
             </div>
 
             <!-- Contenedor Dinámico de Mi Lista -->
-            <div id="myListGrid" class="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 gap-4 md:gap-6"></div>
+            <div id="myListGrid" class="grid grid-cols-3 sm:grid-cols-4 md:grid-cols-6 lg:grid-cols-7 gap-3 md:gap-4"></div>
         </div>
 
     </div>
@@ -173,7 +162,6 @@
                         <h3 class="text-xs font-black uppercase text-gray-500 mb-1 tracking-wider">Sinopsis</h3>
                         <p id="detailOverview" class="text-gray-300 text-sm leading-relaxed mb-4"></p>
                         
-                        <!-- NUEVA FICHA TÉCNICA (CRÉDITOS) -->
                         <div id="detailCredits" class="flex flex-col gap-2 mt-2 p-4 bg-gray-900/50 rounded-2xl border border-gray-700/50"></div>
 
                         <div id="detailActions" class="mt-auto pt-6 flex flex-wrap gap-3"></div>
@@ -189,7 +177,7 @@
         </div>
     </div>
 
-    <!-- NUEVO MODAL DE FILMOGRAFÍA (PERSONA) -->
+    <!-- MODAL DE FILMOGRAFÍA (PERSONA) -->
     <div id="modalPersona" class="hidden fixed inset-0 bg-black/95 flex justify-center items-center p-4 z-[60] backdrop-blur-sm">
         <div class="bg-gray-900 rounded-3xl w-full max-w-4xl max-h-[85vh] flex flex-col shadow-2xl border border-gray-600">
             <div class="p-4 border-b border-gray-700 flex justify-between items-center">
