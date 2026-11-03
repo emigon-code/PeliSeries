@@ -69,7 +69,11 @@ const detailActions = document.getElementById('detailActions');
 const detailRecommendations = document.getElementById('detailRecommendations');
 const detailCredits = document.getElementById('detailCredits');
 
-const modalEpisodios = document.getElementById('modalEpisodios');
+// ELEMENTOS NUEVOS DE TEMPORADAS INTEGRADOS
+const detailSeasonsWrapper = document.getElementById('detailSeasonsWrapper');
+const detailSeasonsContent = document.getElementById('detailSeasonsContent');
+const btnMarcarSerieDetalle = document.getElementById('btnMarcarSerieDetalle');
+
 const modalPersona = document.getElementById('modalPersona');
 
 
@@ -130,7 +134,6 @@ document.addEventListener('keydown', (e) => {
     if (e.key === 'Escape') {
         cerrarModalDetalle();
         cerrarModalImportacion();
-        cerrarModal(); 
         cerrarModalPersona();
     }
 });
@@ -198,11 +201,21 @@ async function procesarImportacion() {
         procesados++;
     }
     
-    importStatus.textContent = `¡Importación completada! Se añadieron ${encontrados} títulos.`;
+    importStatus.textContent = `¡Importación completada! Se añadieron ${encontrados} titles.`;
     btnProcesarImport.textContent = "Cerrar y ver mi lista";
     btnProcesarImport.disabled = false;
     btnProcesarImport.classList.remove('opacity-50');
     btnProcesarImport.onclick = () => { cerrarModalImportacion(); btnNavList.click(); };
+}
+
+
+// --- UTILIDADES ---
+function formatearFecha(fechaStr) {
+    if (!fechaStr) return '';
+    const partes = fechaStr.split('-');
+    if (partes.length !== 3) return fechaStr;
+    const [yyyy, mm, dd] = partes;
+    return `${dd}/${mm}/${yyyy}`;
 }
 
 
@@ -575,7 +588,12 @@ function pintarMiLista(dataArray) {
 
 
 // --- MODAL DE DETALLE, CRÉDITOS Y RECOMENDACIONES ---
-function cerrarModalDetalle() { modalDetalle.classList.add('hidden'); currentDetailTrackingId = null; }
+function cerrarModalDetalle() { 
+    modalDetalle.classList.add('hidden'); 
+    currentDetailTrackingId = null; 
+    detailSeasonsWrapper.classList.add('hidden');
+    detailSeasonsContent.innerHTML = '';
+}
 
 async function cargarCreditos(tmdb_id, tipo) {
     detailCredits.innerHTML = '<span class="text-xs text-gray-500">Cargando ficha técnica...</span>';
@@ -688,6 +706,10 @@ async function abrirModalDetalleDesdeBusqueda(tmdb_id) {
 
     cargarCreditos(tmdb_id, item.media_type);
     cargarRecomendaciones(tmdb_id, item.media_type);
+
+    if (item.media_type === 'tv') {
+        renderizarTemporadas(tmdb_id, null, item.title || item.name); // Muestra temporadas sin botones de guardar
+    }
 }
 
 function abrirModalDetalleDesdeLista(tracking_id) {
@@ -721,19 +743,18 @@ function abrirModalDetalleDesdeLista(tracking_id) {
         detailStatus.classList.add('hidden');
     }
 
-    const botonCapitulos = item.type === 'tv' 
-        ? `<button onclick="cerrarModalDetalle(); abrirModalSeries(${item.tmdb_id}, '${registro.id}', '${item.title.replace(/'/g, "\\'")}')" class="flex-grow bg-gradient-to-r from-indigo-500 to-purple-600 hover:from-indigo-400 hover:to-purple-500 text-white py-3 rounded-xl text-sm font-bold transition-colors shadow-lg">📋 Ver Capítulos</button>` 
-        : '';
-
     detailActions.innerHTML = `
-        ${botonCapitulos}
-        <button onclick="borrarDeMiLista('${registro.id}', ${item.tmdb_id}, '${item.title.replace(/'/g, "\\'")}')" class="bg-red-950/60 hover:bg-red-600 text-red-400 hover:text-white border border-red-800/60 px-5 py-3 rounded-xl text-sm font-bold transition-colors flex items-center justify-center gap-2">
-            🗑️ Eliminar
+        <button onclick="borrarDeMiLista('${registro.id}', ${item.tmdb_id}, '${item.title.replace(/'/g, "\\'")}')" class="w-full bg-red-950/60 hover:bg-red-600 text-red-400 hover:text-white border border-red-800/60 px-5 py-3 rounded-xl text-sm font-bold transition-colors flex items-center justify-center gap-2">
+            🗑️ Eliminar de mi lista
         </button>
     `;
 
     cargarCreditos(item.tmdb_id, item.type);
     cargarRecomendaciones(item.tmdb_id, item.type);
+
+    if (item.type === 'tv') {
+        renderizarTemporadas(item.tmdb_id, registro.id, item.title);
+    }
 }
 
 async function cambiarNotaPersonal(valor) {
@@ -857,14 +878,11 @@ async function cambiarEstado(selectElement, tracking_id, tmdb_id, tipo, titulo) 
 }
 
 
-// --- MODAL DE EPISODIOS Y ACORDEONES ---
-function cerrarModal() { modalEpisodios.classList.add('hidden'); }
+// --- TEMPORADAS Y EPISODIOS INTEGRADOS ---
 
-async function abrirModalSeries(tmdb_id, tracking_id, titulo) {
-    modalEpisodios.classList.remove('hidden');
-    document.getElementById('modalTitle').textContent = titulo;
-    const modalContent = document.getElementById('modalContent');
-    modalContent.innerHTML = '<p class="text-center text-indigo-400 py-6">Cargando episodios...</p>';
+async function renderizarTemporadas(tmdb_id, tracking_id, titulo) {
+    detailSeasonsWrapper.classList.remove('hidden');
+    detailSeasonsContent.innerHTML = '<p class="text-indigo-400 text-xs py-4 text-center">Cargando episodios...</p>';
 
     try {
         const resTMDB = await fetch(`https://api.themoviedb.org/3/tv/${tmdb_id}?language=es-ES`, { headers: { Authorization: `Bearer ${TMDB_TOKEN}` } });
@@ -873,71 +891,82 @@ async function abrirModalSeries(tmdb_id, tracking_id, titulo) {
         totalSerieCapitulosGlobal = 0;
         serieData.seasons.filter(t => t.season_number > 0).forEach(t => totalSerieCapitulosGlobal += t.episode_count);
 
-        const { data: vistosDB } = await clienteSupabase.from('user_episodes').select('season_number, episode_number').eq('tracking_id', tracking_id);
-        vistosTemporal = vistosDB || [];
+        if (tracking_id) {
+            const { data: vistosDB } = await clienteSupabase.from('user_episodes').select('season_number, episode_number').eq('tracking_id', tracking_id);
+            vistosTemporal = vistosDB || [];
+            btnMarcarSerieDetalle.classList.remove('hidden');
+            evaluarBotonSerieCompleta(tracking_id, tmdb_id, titulo);
+        } else {
+            vistosTemporal = [];
+            btnMarcarSerieDetalle.classList.add('hidden');
+        }
 
-        evaluarBotonSerieCompleta(tracking_id, tmdb_id, titulo);
-
-        modalContent.innerHTML = '';
+        detailSeasonsContent.innerHTML = '';
         serieData.seasons.filter(t => t.season_number > 0).forEach(temp => {
-            const vistosDeTemp = vistosTemporal.filter(v => v.season_number === temp.season_number).length;
-            const totalDeTemp = temp.episode_count;
-            const tempCompleta = vistosDeTemp === totalDeTemp && totalDeTemp > 0;
+            
+            const yearTemp = temp.air_date ? temp.air_date.substring(0, 4) : '';
+            const yearBadge = yearTemp ? `<span class="text-[10px] text-gray-500 font-normal">(${yearTemp})</span>` : '';
 
-            let estadoTempHtml = '<span class="season-status-badge text-gray-400 text-[10px] font-normal px-2 bg-gray-800 rounded border border-gray-700 tracking-wider uppercase">⏳ Pendiente</span>';
-            if (vistosDeTemp > 0 && vistosDeTemp < totalDeTemp) {
-                estadoTempHtml = `<span class="season-status-badge text-yellow-400 text-[10px] font-normal px-2 bg-yellow-900/30 rounded border border-yellow-700/50 tracking-wider uppercase">👀 A medias (${vistosDeTemp}/${totalDeTemp})</span>`;
-            } else if (tempCompleta) {
-                estadoTempHtml = '<span class="season-status-badge text-green-400 text-[10px] font-normal px-2 bg-green-900/30 rounded border border-green-700/50 tracking-wider uppercase">✅ Vista</span>';
+            let estadoTempHtml = '';
+            let btnTempHtml = '';
+
+            if (tracking_id) {
+                const vistosDeTemp = vistosTemporal.filter(v => v.season_number === temp.season_number).length;
+                const totalDeTemp = temp.episode_count;
+                const tempCompleta = vistosDeTemp === totalDeTemp && totalDeTemp > 0;
+
+                if (vistosDeTemp === 0) estadoTempHtml = '<span class="season-status-badge text-gray-400 text-[10px] font-normal px-2 bg-gray-800 rounded border border-gray-700 tracking-wider uppercase ml-auto">⏳ Ptes</span>';
+                else if (vistosDeTemp < totalDeTemp) estadoTempHtml = `<span class="season-status-badge text-yellow-400 text-[10px] font-normal px-2 bg-yellow-900/30 rounded border border-yellow-700/50 tracking-wider uppercase ml-auto">👀 (${vistosDeTemp}/${totalDeTemp})</span>`;
+                else estadoTempHtml = '<span class="season-status-badge text-green-400 text-[10px] font-normal px-2 bg-green-900/30 rounded border border-green-700/50 tracking-wider uppercase ml-auto">✅ Vista</span>';
+
+                const btnTempAttr = tempCompleta 
+                    ? 'disabled class="season-action-btn px-4 py-3 bg-gray-800/50 text-gray-500 opacity-50 cursor-not-allowed font-bold text-[11px] sm:text-xs border-t sm:border-t-0 sm:border-l border-gray-600/60 flex items-center justify-center"' 
+                    : 'class="season-action-btn px-4 py-3 bg-indigo-900/40 text-indigo-300 hover:bg-indigo-600 hover:text-white font-bold text-[11px] sm:text-xs border-t sm:border-t-0 sm:border-l border-gray-600/60 transition-all flex items-center justify-center"';
+                const btnTempTexto = tempCompleta ? '✓ Temp' : '✓ Marcar';
+                
+                btnTempHtml = `<button onclick="marcarTemporadaCompleta('${tracking_id}', ${temp.season_number}, ${temp.episode_count}, this, ${tmdb_id})" ${btnTempAttr}>${btnTempTexto}</button>`;
             }
 
-            const btnTempAttr = tempCompleta 
-                ? 'disabled class="season-action-btn px-4 py-3 bg-gray-800/50 text-gray-500 opacity-50 cursor-not-allowed font-bold text-[11px] sm:text-xs border-t sm:border-t-0 sm:border-l border-gray-600/60 flex items-center justify-center"' 
-                : 'class="season-action-btn px-4 py-3 bg-indigo-900/40 text-indigo-300 hover:bg-indigo-600 hover:text-white font-bold text-[11px] sm:text-xs border-t sm:border-t-0 sm:border-l border-gray-600/60 transition-all flex items-center justify-center"';
-            
-            const btnTempTexto = tempCompleta ? '✓ Temp. completa' : '✓ Marcar como vista';
-
-            modalContent.innerHTML += `
+            detailSeasonsContent.innerHTML += `
                 <div data-season-div="${temp.season_number}" data-total-caps="${temp.episode_count}" class="mb-3 border border-gray-700/80 rounded-2xl overflow-hidden shadow-sm">
                     <div class="w-full bg-gray-700/70 flex flex-col sm:flex-row justify-between items-stretch">
-                        <button onclick="cargarEpisodios(this.parentElement, ${tmdb_id}, ${temp.season_number}, '${tracking_id}')" 
-                                class="flex-grow p-4 text-left font-bold text-white hover:bg-gray-600 flex items-center gap-3 transition-colors flex-wrap">
-                            Temp. ${temp.season_number} 
+                        <button onclick="cargarEpisodios(this.parentElement, ${tmdb_id}, ${temp.season_number}, ${tracking_id ? `'${tracking_id}'` : 'null'})" 
+                                class="flex-grow p-3.5 text-left font-bold text-white hover:bg-gray-600 flex items-center gap-2 transition-colors flex-wrap">
+                            Temp. ${temp.season_number} ${yearBadge}
                             <span class="text-[10px] font-normal bg-gray-800/80 px-2 py-0.5 rounded text-gray-300 border border-gray-600/50">${temp.episode_count} cap.</span>
                             ${estadoTempHtml}
                         </button>
-                        <button onclick="marcarTemporadaCompleta('${tracking_id}', ${temp.season_number}, ${temp.episode_count}, this, ${tmdb_id})" ${btnTempAttr}>
-                            ${btnTempTexto}
-                        </button>
+                        ${btnTempHtml}
                     </div>
                     <div class="capitulos-container hidden p-2 bg-gray-900/90 flex flex-col gap-1"></div>
                 </div>
             `;
         });
-    } catch(e) { modalContent.innerHTML = '<p class="text-red-400 text-center">Error al cargar episodios.</p>'; }
+    } catch(e) { detailSeasonsContent.innerHTML = '<p class="text-red-400 text-center text-xs">Error al cargar episodios.</p>'; }
 }
 
 function evaluarBotonSerieCompleta(tracking_id, tmdb_id, titulo) {
-    const btnMarcarSerie = document.getElementById('btnMarcarSerie');
+    if (!btnMarcarSerieDetalle) return;
+
     const totalVistos = vistosTemporal.length;
     const serieCompleta = totalVistos >= totalSerieCapitulosGlobal && totalSerieCapitulosGlobal > 0;
 
     if (serieCompleta) {
-        btnMarcarSerie.textContent = "✓ Serie completada";
-        btnMarcarSerie.disabled = true;
-        btnMarcarSerie.className = "bg-green-950/60 text-green-400 opacity-60 cursor-not-allowed text-xs md:text-sm font-bold py-2.5 px-4 rounded-xl shadow border border-green-800/50";
+        btnMarcarSerieDetalle.textContent = "✓ Serie completada";
+        btnMarcarSerieDetalle.disabled = true;
+        btnMarcarSerieDetalle.className = "hidden md:block bg-green-950/60 text-green-400 opacity-60 cursor-not-allowed text-xs font-bold py-1.5 px-3 rounded-lg shadow border border-green-800/50";
     } else {
-        btnMarcarSerie.textContent = "✓ Marcar serie completa";
-        btnMarcarSerie.disabled = false;
-        btnMarcarSerie.className = "bg-green-700 hover:bg-green-600 text-white text-xs md:text-sm font-bold py-2.5 px-4 rounded-xl shadow transition-colors";
+        btnMarcarSerieDetalle.textContent = "✓ Marcar serie completa";
+        btnMarcarSerieDetalle.disabled = false;
+        btnMarcarSerieDetalle.className = "bg-green-700 hover:bg-green-600 text-white text-xs font-bold py-1.5 px-3 rounded-lg shadow transition-colors";
         
-        btnMarcarSerie.onclick = async () => {
-            btnMarcarSerie.textContent = "⌛ Guardando...";
-            btnMarcarSerie.disabled = true;
+        btnMarcarSerieDetalle.onclick = async () => {
+            btnMarcarSerieDetalle.textContent = "⌛ Guardando...";
+            btnMarcarSerieDetalle.disabled = true;
             await procesarSerieCompletaBBDD(tracking_id, tmdb_id);
             await actualizarEstadoSeguro(tracking_id, 'vista');
             alert(`¡Has marcado toda la serie "${titulo}" como Vista!`);
-            cerrarModal();
+            renderizarTemporadas(tmdb_id, tracking_id, titulo); 
             cargarMiLista(); 
         };
     }
@@ -955,15 +984,20 @@ async function cargarEpisodios(cabeceraDiv, tmdb_id, season_number, tracking_id)
     
     contenedor.innerHTML = '';
     data.episodes.forEach(ep => {
-        const estaVisto = vistosTemporal.some(v => v.season_number === season_number && v.episode_number === ep.episode_number);
+        const estaVisto = tracking_id ? vistosTemporal.some(v => v.season_number === season_number && v.episode_number === ep.episode_number) : false;
+        const fechaHtml = ep.air_date ? `<span class="text-[10px] text-gray-500 font-normal ml-auto whitespace-nowrap hidden sm:block">${formatearFecha(ep.air_date)}</span>` : '';
+        
+        const controlHtml = tracking_id 
+            ? `<input type="checkbox" id="ep-${ep.id}" ${estaVisto ? 'checked' : ''} onchange="marcarCapitulo('${tracking_id}', ${season_number}, ${ep.episode_number}, this.checked, ${tmdb_id})" class="peer w-4 h-4 accent-indigo-500 rounded cursor-pointer flex-shrink-0">`
+            : `<span class="w-4 h-4 flex-shrink-0 text-gray-600 text-[10px] flex items-center justify-center">▶</span>`;
+
         contenedor.innerHTML += `
             <div class="flex items-center gap-3 p-2 hover:bg-gray-800/80 rounded-xl transition-colors border-b border-gray-800/60 last:border-0">
-                <input type="checkbox" id="ep-${ep.id}" ${estaVisto ? 'checked' : ''} 
-                       onchange="marcarCapitulo('${tracking_id}', ${season_number}, ${ep.episode_number}, this.checked, ${tmdb_id})"
-                       class="peer w-4 h-4 accent-indigo-500 rounded cursor-pointer flex-shrink-0">
-                <label for="ep-${ep.id}" class="cursor-pointer flex items-center gap-2 flex-grow">
+                ${controlHtml}
+                <label for="ep-${ep.id}" class="${tracking_id ? 'cursor-pointer' : ''} flex items-center gap-2 flex-grow">
                     <span class="text-[11px] font-bold text-gray-500 w-5 flex-shrink-0">${ep.episode_number}.</span>
-                    <span class="text-[13px] text-gray-300 line-clamp-1 peer-checked:line-through peer-checked:text-gray-600 transition-all">${ep.name}</span>
+                    <span class="text-[13px] text-gray-300 line-clamp-1 ${tracking_id ? 'peer-checked:line-through peer-checked:text-gray-600' : ''} transition-all">${ep.name}</span>
+                    ${fechaHtml}
                 </label>
             </div>
         `;
@@ -1016,19 +1050,19 @@ function actualizarHeaderTemporada(season_number) {
     const btnElem = tempDiv.querySelector('.season-action-btn');
 
     if (badgeElem) {
-        if (vistosDeTemp === 0) badgeElem.outerHTML = '<span class="season-status-badge text-gray-400 text-[10px] font-normal px-2 bg-gray-800 rounded border border-gray-700 tracking-wider uppercase">⏳ Pendiente</span>';
-        else if (vistosDeTemp < totalCapitulos) badgeElem.outerHTML = `<span class="season-status-badge text-yellow-400 text-[10px] font-normal px-2 bg-yellow-900/30 rounded border border-yellow-700/50 tracking-wider uppercase">👀 A medias (${vistosDeTemp}/${totalCapitulos})</span>`;
-        else badgeElem.outerHTML = '<span class="season-status-badge text-green-400 text-[10px] font-normal px-2 bg-green-900/30 rounded border border-green-700/50 tracking-wider uppercase">✅ Vista</span>';
+        if (vistosDeTemp === 0) badgeElem.outerHTML = '<span class="season-status-badge text-gray-400 text-[10px] font-normal px-2 bg-gray-800 rounded border border-gray-700 tracking-wider uppercase ml-auto">⏳ Ptes</span>';
+        else if (vistosDeTemp < totalCapitulos) badgeElem.outerHTML = `<span class="season-status-badge text-yellow-400 text-[10px] font-normal px-2 bg-yellow-900/30 rounded border border-yellow-700/50 tracking-wider uppercase ml-auto">👀 (${vistosDeTemp}/${totalCapitulos})</span>`;
+        else badgeElem.outerHTML = '<span class="season-status-badge text-green-400 text-[10px] font-normal px-2 bg-green-900/30 rounded border border-green-700/50 tracking-wider uppercase ml-auto">✅ Vista</span>';
     }
 
     if (btnElem) {
         if (tempCompleta) {
             btnElem.disabled = true;
-            btnElem.textContent = "✓ Temp. completa";
+            btnElem.textContent = "✓ Temp";
             btnElem.className = "season-action-btn px-4 py-3 bg-gray-800/50 text-gray-500 opacity-50 cursor-not-allowed font-bold text-[11px] sm:text-xs border-t sm:border-t-0 sm:border-l border-gray-600/60 flex items-center justify-center";
         } else {
             btnElem.disabled = false;
-            btnElem.textContent = "✓ Marcar como vista";
+            btnElem.textContent = "✓ Marcar";
             btnElem.className = "season-action-btn px-4 py-3 bg-indigo-900/40 text-indigo-300 hover:bg-indigo-600 hover:text-white font-bold text-[11px] sm:text-xs border-t sm:border-t-0 sm:border-l border-gray-600/60 transition-all flex items-center justify-center";
         }
     }
@@ -1051,7 +1085,7 @@ async function evaluarEstadoSerieDesdeEpisodios(tracking_id, tmdb_id) {
         recalcularSiguienteCapitulo(miBibliotecaLocal[idx]); 
     }
 
-    const titulo = document.getElementById('modalTitle').textContent;
+    const titulo = document.getElementById('detailTitle').textContent;
     evaluarBotonSerieCompleta(tracking_id, tmdb_id, titulo);
     
     aplicarFiltrosYDiseño(); 
