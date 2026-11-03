@@ -164,7 +164,7 @@ btnNavList.addEventListener('click', () => {
 });
 
 
-// --- IMPORTACIÓN MASIVA ---
+// --- IMPORTACIÓN / BÚSQUEDA EN BLOQUE ---
 function abrirModalImportacion() {
     if (!usuarioActual) return alert("¡Inicia sesión primero!");
     modalImport.classList.remove('hidden');
@@ -173,7 +173,7 @@ function abrirModalImportacion() {
     btnProcesarImport.disabled = false;
     btnProcesarImport.classList.remove('opacity-50');
     btnProcesarImport.onclick = procesarImportacion;
-    btnProcesarImport.textContent = "Comenzar Importación";
+    btnProcesarImport.textContent = "Comenzar Búsqueda";
     
     setTimeout(() => {
         importTextarea.focus();
@@ -214,7 +214,7 @@ async function procesarImportacion() {
         procesados++;
     }
     
-    importStatus.textContent = `¡Importación completada! Se añadieron ${encontrados} títulos.`;
+    importStatus.textContent = `¡Búsqueda en bloque completada! Se añadieron ${encontrados} títulos a tu lista.`;
     btnProcesarImport.textContent = "Cerrar y ver mi lista";
     btnProcesarImport.disabled = false;
     btnProcesarImport.classList.remove('opacity-50');
