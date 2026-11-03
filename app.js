@@ -2,6 +2,7 @@
 const TMDB_TOKEN = 'eyJhbGciOiJIUzI1NiJ9.eyJhdWQiOiJmNTIyNzVlMDVhNTAxMjllZWYwMGRhN2Q5ZmU5NTZlZSIsIm5iZiI6MTc5MzU1NjUzNC4wMDcsInN1YiI6IjZhZTc4MDM2MWMyNDI4MTQ4MmM4ZGM2NSIsInNjb3BlcyI6WyJhcGlfcmVhZCJdLCJ2ZXJzaW9uIjoxfQ.b2COQUX-mmBdGPcxwCTUN7HI5EN6KNemlZSzbaD5NuI'; 
 const SUPABASE_URL = 'https://dqqfoucxbsvfdshruygt.supabase.co';
 const SUPABASE_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImRxcWZvdWN4YnN2ZmRzaHJ1eWd0Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3OTM1NDgyOTQsImV4cCI6MjEwOTEyNDI5NH0.Z4yVjtuuSrs3Pc5AghHFVeENOvmIeA8k34iWcVQiqIQ';
+
 const clienteSupabase = window.supabase.createClient(SUPABASE_URL, SUPABASE_KEY);
 
 // ESTADOS GLOBALES DE LA APP
@@ -11,20 +12,20 @@ let miListaTMDBIDs = [];
 let miBibliotecaLocal = []; 
 let vistosTemporal = []; 
 let totalSerieCapitulosGlobal = 0; 
-let currentDetailTrackingId = null; // Para guardar la nota personal
+let currentDetailTrackingId = null; 
 
 // Filtros y Ordenación
 let filterTypes = ['movie', 'tv']; 
 let currentFilterStatus = 'all';
 let filterRating8Plus = false; 
-let filterMyRating8Plus = false; // Toggle para nota personal
+let filterMyRating8Plus = false; 
 let currentSort = 'recent'; 
 let currentSearchSort = 'rating'; 
-let localSearchQuery = ''; // Búsqueda local
+let localSearchQuery = ''; 
 
-// ESTILOS PREMIUM PARA LOS BOTONES (Ahora más grandes px-4 py-2 text-sm)
-const btnPillActive = 'px-4 py-2 rounded-xl text-sm font-bold transition-all bg-gradient-to-r from-indigo-500 to-purple-600 text-white shadow-md flex items-center gap-2';
-const btnPillInactive = 'px-4 py-2 rounded-xl text-sm font-bold transition-all bg-transparent text-gray-400 hover:bg-white/5 flex items-center gap-2';
+// ESTILOS DE BOTONES ADAPTATIVOS
+const btnPillActive = 'px-2.5 py-1.5 rounded-lg text-xs font-bold transition-all bg-gradient-to-r from-indigo-500 to-purple-600 text-white shadow-md flex items-center gap-1';
+const btnPillInactive = 'px-2.5 py-1.5 rounded-lg text-xs font-bold transition-all bg-transparent text-gray-400 hover:bg-white/5 flex items-center gap-1';
 
 const searchPillActive = 'px-4 py-2 rounded-xl text-sm font-bold bg-gradient-to-r from-indigo-500 to-purple-600 text-white shadow-md transition-all';
 const searchPillInactive = 'px-4 py-2 rounded-xl text-sm font-bold bg-transparent text-gray-400 hover:text-white transition-all';
@@ -35,7 +36,7 @@ const searchInput = document.getElementById('searchInput');
 const searchBtn = document.getElementById('searchBtn');
 const resultsGrid = document.getElementById('resultsGrid');
 const searchSortBar = document.getElementById('searchSortBar');
-const localSearchInput = document.getElementById('localSearchInput'); // Buscador local
+const localSearchInput = document.getElementById('localSearchInput'); 
 const loginBtn = document.getElementById('loginBtn');
 const registerBtn = document.getElementById('registerBtn'); 
 const logoutBtn = document.getElementById('logoutBtn');
@@ -92,7 +93,7 @@ async function crearCuenta() {
 
     if (error) { alert("Error al registrar: " + error.message); } 
     else { 
-        alert("¡Cuenta creada correctamente! Ahora tienes tu propia base de datos independiente. Iniciando sesión automáticamente...");
+        alert("¡Cuenta creada correctamente! Iniciando sesión automáticamente...");
         if (data.session) { usuarioActual = data.session.user; postLoginSetup(); }
     }
 }
@@ -421,7 +422,6 @@ async function cargarMiLista() {
     if (!usuarioActual) return;
     myListGrid.innerHTML = '<p class="text-indigo-400 col-span-full text-center py-8">Cargando biblioteca personal...</p>';
 
-    // Nos traemos personal_rating y updated_at si existen
     const { data, error } = await clienteSupabase.from('user_tracking')
         .select(`*, items ( id, tmdb_id, title, type, poster_path ), user_episodes (season_number, episode_number)`)
         .eq('user_id', usuarioActual.id);
@@ -658,7 +658,7 @@ async function abrirModalDetalleDesdeBusqueda(tmdb_id) {
     if (!item) return;
 
     modalDetalle.classList.remove('hidden');
-    miValoracionContenedor.classList.add('hidden'); // Oculto porque no está en la biblioteca aún
+    miValoracionContenedor.classList.add('hidden'); 
     
     detailTitle.textContent = item.title || item.name;
     detailBadgeType.textContent = item.media_type === 'movie' ? 'Película' : 'Serie';
@@ -700,7 +700,6 @@ function abrirModalDetalleDesdeLista(tracking_id) {
 
     modalDetalle.classList.remove('hidden');
     
-    // Mostramos contenedor de Mi Valoración
     miValoracionContenedor.classList.remove('hidden');
     miValoracionContenedor.classList.add('flex');
     detailPersonalRating.value = registro.personal_rating || '0';
@@ -737,20 +736,17 @@ function abrirModalDetalleDesdeLista(tracking_id) {
     cargarRecomendaciones(item.tmdb_id, item.type);
 }
 
-// Nueva función para actualizar la nota personal
 async function cambiarNotaPersonal(valor) {
     if (!currentDetailTrackingId) return;
     const nuevaNota = parseInt(valor) || 0;
     
-    // Actualizamos base de datos
     await clienteSupabase.from('user_tracking').update({ personal_rating: nuevaNota }).eq('id', currentDetailTrackingId);
     
-    // Actualizamos memoria local
     const index = miBibliotecaLocal.findIndex(r => r.id === currentDetailTrackingId);
     if(index > -1) {
         miBibliotecaLocal[index].personal_rating = nuevaNota;
     }
-    aplicarFiltrosYDiseño(); // Repinta en fondo para que al cerrar el modal ya esté actualizado
+    aplicarFiltrosYDiseño(); 
 }
 
 
