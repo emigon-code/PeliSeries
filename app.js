@@ -69,7 +69,6 @@ const detailActions = document.getElementById('detailActions');
 const detailRecommendations = document.getElementById('detailRecommendations');
 const detailCredits = document.getElementById('detailCredits');
 
-// ELEMENTOS NUEVOS DE TEMPORADAS INTEGRADOS
 const detailSeasonsWrapper = document.getElementById('detailSeasonsWrapper');
 const detailSeasonsContent = document.getElementById('detailSeasonsContent');
 const btnMarcarSerieDetalle = document.getElementById('btnMarcarSerieDetalle');
@@ -141,14 +140,21 @@ document.addEventListener('keydown', (e) => {
 
 // --- NAVEGACIÓN ---
 btnNavSearch.addEventListener('click', () => {
-    viewSearch.classList.remove('hidden'); viewList.classList.add('hidden');
+    viewSearch.classList.remove('hidden'); 
+    viewList.classList.add('hidden');
     btnNavSearch.className = 'bg-gray-800/80 px-6 py-2 rounded-full font-bold text-sm text-white transition-all border border-gray-700 shadow';
     btnNavList.className = 'bg-transparent hover:bg-white/5 px-6 py-2 rounded-full font-bold text-sm text-gray-400 transition-all';
-    if (pelisYSeries.length > 0) renderResults(pelisYSeries); 
+    
+    // MEJORA 1: Limpiar el cuadro de búsqueda y los resultados previos
+    searchInput.value = '';
+    resultsGrid.innerHTML = '';
+    pelisYSeries = [];
+    searchSortBar.classList.add('hidden');
 });
 
 btnNavList.addEventListener('click', () => {
-    viewSearch.classList.add('hidden'); viewList.classList.remove('hidden');
+    viewSearch.classList.add('hidden'); 
+    viewList.classList.remove('hidden');
     btnNavList.className = 'bg-gradient-to-r from-indigo-500 to-purple-600 px-6 py-2 rounded-full font-bold text-sm text-white transition-all shadow-md shadow-indigo-500/25';
     btnNavSearch.className = 'bg-transparent hover:bg-white/5 px-6 py-2 rounded-full font-bold text-sm text-gray-400 transition-all';
     cargarMiLista();
@@ -165,6 +171,11 @@ function abrirModalImportacion() {
     btnProcesarImport.classList.remove('opacity-50');
     btnProcesarImport.onclick = procesarImportacion;
     btnProcesarImport.textContent = "Comenzar Importación";
+    
+    // MEJORA 2: Colocar el foco automáticamente en el cuadro de escritura
+    setTimeout(() => {
+        importTextarea.focus();
+    }, 50);
 }
 
 function cerrarModalImportacion() { modalImport.classList.add('hidden'); }
@@ -201,11 +212,75 @@ async function procesarImportacion() {
         procesados++;
     }
     
-    importStatus.textContent = `¡Importación completada! Se añadieron ${encontrados} titles.`;
+    importStatus.textContent = `¡Importación completada! Se añadieron ${encontrados} títulos.`;
     btnProcesarImport.textContent = "Cerrar y ver mi lista";
     btnProcesarImport.disabled = false;
     btnProcesarImport.classList.remove('opacity-50');
     btnProcesarImport.onclick = () => { cerrarModalImportacion(); btnNavList.click(); };
+}
+
+
+// --- MEJORA 3: EXPORTACIÓN A EXCEL (.XLSX) ---
+function exportarAExcel() {
+    if (!miBibliotecaLocal || miBibliotecaLocal.length === 0) {
+        return alert("No hay ningún elemento en tu lista para exportar.");
+    }
+
+    const datosFormateados = miBibliotecaLocal.map(registro => {
+        const item = registro.items;
+        const details = registro.details || {};
+        
+        let progresoCapitulos = 'N/A';
+        if (item.type === 'tv') {
+            const totalOficial = calcularTotalCapitulosOficiales(details.seasons_data);
+            const vistosCount = (registro.user_episodes || []).length;
+            progresoCapitulos = `${vistosCount}/${totalOficial}`;
+        }
+
+        let estadoFormateado = 'Pendiente';
+        if (registro.status === 'viendo') estadoFormateado = 'Viendo';
+        if (registro.status === 'vista') estadoFormateado = 'Vista';
+
+        return {
+            'Título': item.title,
+            'Tipo': item.type === 'movie' ? 'Película' : 'Serie',
+            'Estado': estadoFormateado,
+            'Mi Nota': (registro.personal_rating && registro.personal_rating > 0) ? registro.personal_rating : 'Sin nota',
+            'Nota TMDB': details.rating || 'N/A',
+            'Año': details.year || 'N/A',
+            'Capítulos Vistos': progresoCapitulos,
+            'Siguiente Episodio': details.next_episode || 'N/A',
+            'Temporadas': item.type === 'tv' ? (details.seasons_count || 0) : 'N/A',
+            'Estado Emisión': item.type === 'tv' ? (details.is_ended ? 'Finalizada' : 'En emisión') : 'N/A',
+            'Sinopsis': details.overview || '',
+            'TMDB ID': item.tmdb_id
+        };
+    });
+
+    // Crear libro y hoja de cálculo con SheetJS
+    const hoja = XLSX.utils.json_to_sheet(datosFormateados);
+    
+    // Ancho de columnas optimizado
+    hoja['!cols'] = [
+        { wch: 32 }, // Título
+        { wch: 10 }, // Tipo
+        { wch: 12 }, // Estado
+        { wch: 10 }, // Mi Nota
+        { wch: 12 }, // Nota TMDB
+        { wch: 8 },  // Año
+        { wch: 18 }, // Capítulos Vistos
+        { wch: 18 }, // Siguiente Episodio
+        { wch: 12 }, // Temporadas
+        { wch: 15 }, // Estado Emisión
+        { wch: 55 }, // Sinopsis
+        { wch: 10 }  // TMDB ID
+    ];
+
+    const libro = XLSX.utils.book_new();
+    XLSX.utils.book_append_sheet(libro, hoja, "Mi Lista PeliSeries");
+
+    const fechaHora = new Date().toISOString().slice(0, 10);
+    XLSX.writeFile(libro, `PeliSeries_MiLista_${fechaHora}.xlsx`);
 }
 
 
@@ -708,7 +783,7 @@ async function abrirModalDetalleDesdeBusqueda(tmdb_id) {
     cargarRecomendaciones(tmdb_id, item.media_type);
 
     if (item.media_type === 'tv') {
-        renderizarTemporadas(tmdb_id, null, item.title || item.name); // Muestra temporadas sin botones de guardar
+        renderizarTemporadas(tmdb_id, null, item.title || item.name);
     }
 }
 
