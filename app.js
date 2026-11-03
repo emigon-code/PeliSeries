@@ -60,6 +60,7 @@ const detailPoster = document.getElementById('detailPoster');
 const detailTitle = document.getElementById('detailTitle');
 const detailBadgeType = document.getElementById('detailBadgeType');
 const detailYear = document.getElementById('detailYear');
+const detailCountry = document.getElementById('detailCountry'); // NUEVO
 const detailRating = document.getElementById('detailRating');
 const detailPersonalRating = document.getElementById('detailPersonalRating');
 const miValoracionContenedor = document.getElementById('miValoracionContenedor');
@@ -256,6 +257,7 @@ function exportarAExcel() {
             'Siguiente Episodio': details.next_episode || 'N/A',
             'Temporadas': item.type === 'tv' ? (details.seasons_count || 0) : 'N/A',
             'Estado Emisión': item.type === 'tv' ? (details.is_ended ? 'Finalizada' : 'En emisión') : 'N/A',
+            'País': details.country || 'N/A',
             'Sinopsis': details.overview || '',
             'TMDB ID': item.tmdb_id
         };
@@ -274,6 +276,7 @@ function exportarAExcel() {
         { wch: 18 }, // Siguiente Episodio
         { wch: 12 }, // Temporadas
         { wch: 15 }, // Estado Emisión
+        { wch: 10 }, // País
         { wch: 55 }, // Sinopsis
         { wch: 10 }  // TMDB ID
     ];
@@ -293,6 +296,17 @@ function formatearFecha(fechaStr) {
     if (partes.length !== 3) return fechaStr;
     const [yyyy, mm, dd] = partes;
     return `${dd}/${mm}/${yyyy}`;
+}
+
+// Convertidor automático de código de país a emoji de bandera (ej. US -> 🇺🇸)
+function obtenerBandera(codigos) {
+    if (!codigos || codigos.length === 0 || !codigos[0]) return '';
+    let code = codigos[0];
+    if (typeof code === 'object' && code.iso_3166_1) code = code.iso_3166_1;
+    if (typeof code !== 'string') return '';
+    
+    const flag = code.toUpperCase().replace(/./g, char => String.fromCodePoint(char.charCodeAt(0) + 127397));
+    return `${flag} ${code}`;
 }
 
 
@@ -543,7 +557,8 @@ async function cargarMiLista() {
                 seasons_count: tmdbData.number_of_seasons || 0,
                 is_ended: tmdbData.status === 'Ended' || tmdbData.status === 'Canceled',
                 seasons_data: tmdbData.seasons || [],
-                year: (tmdbData.release_date || tmdbData.first_air_date || '').substring(0, 4)
+                year: (tmdbData.release_date || tmdbData.first_air_date || '').substring(0, 4),
+                country: tmdbData.origin_country || (tmdbData.production_countries ? tmdbData.production_countries.map(c=>c.iso_3166_1) : [])
             };
             
             if (item.type === 'tv') {
@@ -564,7 +579,7 @@ async function cargarMiLista() {
             recalcularSiguienteCapitulo(registro);
             return registro;
         } catch(e) {
-            return { ...registro, details: { rating: 'N/A', overview: 'Sin datos.', seasons_count: 0, is_ended: false, next_episode: null, year: '' } };
+            return { ...registro, details: { rating: 'N/A', overview: 'Sin datos.', seasons_count: 0, is_ended: false, next_episode: null, year: '', country: [] } };
         }
     }));
 
@@ -816,20 +831,27 @@ async function abrirModalDetalleDesdeBusqueda(tmdb_id) {
     detailPoster.src = item.poster_path ? `https://image.tmdb.org/t/p/w500${item.poster_path}` : 'https://via.placeholder.com/500x750/1f2937/ffffff?text=Sin+Poster';
     detailRating.textContent = `⭐ ${item.vote_average ? item.vote_average.toFixed(1) : 'N/A'}`;
     detailOverview.textContent = item.overview || 'Sin descripción disponible en español.';
+    detailCountry.textContent = ''; // Limpiar por defecto
 
     detailSeasons.classList.add('hidden');
     detailStatus.classList.add('hidden');
 
-    if (item.media_type === 'tv') {
-        try {
-            const res = await fetch(`https://api.themoviedb.org/3/tv/${tmdb_id}?language=es-ES`, { headers: { Authorization: `Bearer ${TMDB_TOKEN}` } });
-            const data = await res.json();
-            detailSeasons.textContent = `${data.number_of_seasons} Temporadas`;
+    try {
+        // Hacemos un fetch rápido a los detalles completos para tener siempre país exacto
+        const endpoint = item.media_type === 'movie' ? `movie/${tmdb_id}` : `tv/${tmdb_id}`;
+        const res = await fetch(`https://api.themoviedb.org/3/${endpoint}?language=es-ES`, { headers: { Authorization: `Bearer ${TMDB_TOKEN}` } });
+        const dataFull = await res.json();
+        
+        const codigosPais = dataFull.origin_country || (dataFull.production_countries ? dataFull.production_countries.map(c=>c.iso_3166_1) : []);
+        detailCountry.textContent = obtenerBandera(codigosPais);
+
+        if (item.media_type === 'tv') {
+            detailSeasons.textContent = `${dataFull.number_of_seasons} Temporadas`;
             detailSeasons.classList.remove('hidden');
-            detailStatus.textContent = (data.status === 'Ended' || data.status === 'Canceled') ? '🔴 Finalizada' : '🟢 En emisión';
+            detailStatus.textContent = (dataFull.status === 'Ended' || dataFull.status === 'Canceled') ? '🔴 Finalizada' : '🟢 En emisión';
             detailStatus.classList.remove('hidden');
-        } catch(e) {}
-    }
+        }
+    } catch(e) {}
 
     const yaLaTengo = miListaTMDBIDs.includes(item.id);
     detailActions.innerHTML = yaLaTengo
@@ -861,6 +883,7 @@ function abrirModalDetalleDesdeLista(tracking_id) {
     detailTitle.textContent = item.title;
     detailBadgeType.textContent = item.type === 'movie' ? 'Película' : 'Serie';
     detailYear.textContent = details.year;
+    detailCountry.textContent = obtenerBandera(details.country); // Mostrar Bandera
     detailPoster.src = item.poster_path ? `https://image.tmdb.org/t/p/w500${item.poster_path}` : 'https://via.placeholder.com/500x750/1f2937/ffffff?text=Sin+Poster';
     detailRating.textContent = `⭐ ${details.rating}`;
     detailOverview.textContent = details.overview;
