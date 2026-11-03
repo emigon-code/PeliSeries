@@ -483,7 +483,8 @@ function calcularTotalCapitulosOficiales(seasonsData) {
 }
 
 function recalcularSiguienteCapitulo(registro) {
-    if (registro.items.type !== 'tv' || registro.status === 'vista' || !registro.details.seasons_data) {
+    // Si es vista y NO tiene nuevos capítulos, no hay "Siguiente"
+    if (registro.items.type !== 'tv' || (registro.status === 'vista' && !registro.has_new_episodes) || !registro.details.seasons_data) {
         registro.details.next_episode = null;
         return;
     }
@@ -537,10 +538,16 @@ async function cargarMiLista() {
                 year: (tmdbData.release_date || tmdbData.first_air_date || '').substring(0, 4)
             };
             
-            if (item.type === 'tv' && registro.status !== 'vista') {
+            if (item.type === 'tv') {
                 const totalOficial = calcularTotalCapitulosOficiales(registro.details.seasons_data);
                 const vistosCount = (registro.user_episodes || []).length;
-                if (vistosCount >= totalOficial && totalOficial > 0) {
+                
+                // Si la teníamos completada pero han salido capítulos nuevos en TMDB
+                if (registro.status === 'vista' && vistosCount < totalOficial) {
+                    registro.has_new_episodes = true; // Activa el modo "Nueva Temporada"
+                } 
+                // Auto-completar si estaba pendiente/viendo y ya se vieron todos
+                else if (registro.status !== 'vista' && vistosCount >= totalOficial && totalOficial > 0) {
                     registro.status = 'vista';
                     actualizarEstadoSeguro(registro.id, 'vista'); 
                 }
@@ -631,9 +638,17 @@ function pintarMiLista(dataArray) {
             }
         }
 
-        // ESTILOS DINÁMICOS PARA EL SELECT DE ESTADO
+        // ESTILOS DINÁMICOS PARA EL SELECT Y EFECTOS DE NUEVA TEMPORADA
         let selectClass = "w-full text-xs font-semibold rounded-xl p-2.5 focus:ring-2 focus:ring-indigo-500 border outline-none transition-colors cursor-pointer shadow-inner ";
-        if (registro.status === 'vista') {
+        let ringClass = "";
+        let badgeNewSeason = "";
+
+        if (registro.has_new_episodes) {
+            // Estilo visual llamativo si tiene nuevos capítulos estando en estado "Vista"
+            ringClass = "ring-2 ring-pink-500 shadow-[0_0_15px_rgba(219,39,119,0.3)]";
+            badgeNewSeason = `<span class="absolute bottom-2 left-1/2 -translate-x-1/2 bg-gradient-to-r from-pink-600 to-red-500 text-white text-[10px] font-black px-3 py-1.5 rounded-full shadow-lg z-10 animate-pulse whitespace-nowrap">🔥 NUEVOS CAPÍTULOS</span>`;
+            selectClass += "bg-green-950/50 text-green-400 border-green-800/60 opacity-80";
+        } else if (registro.status === 'vista') {
             selectClass += "bg-green-950/50 hover:bg-green-900/60 text-green-400 border-green-800/60";
         } else if (registro.status === 'viendo') {
             selectClass += "bg-yellow-950/50 hover:bg-yellow-900/60 text-yellow-400 border-yellow-800/60";
@@ -643,7 +658,7 @@ function pintarMiLista(dataArray) {
 
         const card = document.createElement('div');
         
-        card.className = 'glass-panel rounded-2xl overflow-hidden shadow-xl hover:border-indigo-500/50 hover:shadow-indigo-500/10 transition-all cursor-pointer group flex flex-col relative';
+        card.className = `glass-panel rounded-2xl overflow-hidden shadow-xl hover:border-indigo-500/50 hover:shadow-indigo-500/10 transition-all cursor-pointer group flex flex-col relative ${ringClass}`;
         card.onclick = () => abrirModalDetalleDesdeLista(registro.id);
         
         card.innerHTML = `
@@ -651,6 +666,7 @@ function pintarMiLista(dataArray) {
                 <img src="${imgUrl}" alt="${item.title}" class="w-full h-full object-cover group-hover:scale-105 transition-transform duration-300">
                 ${miNotaBadge}
                 <span class="absolute top-2 right-2 bg-black/80 backdrop-blur-md text-yellow-400 text-[10px] font-bold px-2 py-1 rounded-lg border border-yellow-500/20 shadow-md">⭐ ${details.rating}</span>
+                ${badgeNewSeason}
             </div>
             <div class="p-3.5 flex flex-col flex-grow bg-gray-900/60">
                 <span class="text-[9px] font-black uppercase tracking-widest text-indigo-400/80 mb-1">${item.type === 'movie' ? 'Película' : 'Serie'}</span>
@@ -927,21 +943,11 @@ async function cambiarEstado(selectElement, tracking_id, tmdb_id, tipo, titulo) 
 
     if (tipo === 'tv') {
         if (nuevoEstado === 'vista') {
-            if (confirm(`Al marcar "${titulo}" como Vista, se marcarán automáticamente todos sus capítulos. ¿Deseas continuar?`)) {
-                await procesarSerieCompletaBBDD(tracking_id, tmdb_id);
-                await cargarMiLista();
-                return;
-            } else {
-                aplicarFiltrosYDiseño();
-                return; 
-            }
+            await procesarSerieCompletaBBDD(tracking_id, tmdb_id);
+            await cargarMiLista();
+            return;
         } else if (nuevoEstado === 'pendiente') {
-            if (confirm(`Al marcar "${titulo}" como Pendiente, se borrará todo el progreso de sus capítulos. ¿Deseas continuar?`)) {
-                await clienteSupabase.from('user_episodes').delete().eq('tracking_id', tracking_id);
-            } else {
-                aplicarFiltrosYDiseño();
-                return;
-            }
+            await clienteSupabase.from('user_episodes').delete().eq('tracking_id', tracking_id);
         }
     }
 
@@ -951,6 +957,8 @@ async function cambiarEstado(selectElement, tracking_id, tmdb_id, tipo, titulo) 
     if(index > -1) {
         miBibliotecaLocal[index].status = nuevoEstado;
         miBibliotecaLocal[index].updated_local = new Date().toISOString(); 
+        miBibliotecaLocal[index].has_new_episodes = false; // Borra la notificación visual si hay actualización
+        
         if (nuevoEstado === 'pendiente') {
             miBibliotecaLocal[index].user_episodes = [];
             recalcularSiguienteCapitulo(miBibliotecaLocal[index]);
@@ -1049,7 +1057,6 @@ function evaluarBotonSerieCompleta(tracking_id, tmdb_id, titulo) {
             btnMarcarSerieDetalle.disabled = true;
             await procesarSerieCompletaBBDD(tracking_id, tmdb_id);
             await actualizarEstadoSeguro(tracking_id, 'vista');
-            alert(`¡Has marcado toda la serie "${titulo}" como Vista!`);
             renderizarTemporadas(tmdb_id, tracking_id, titulo); 
             cargarMiLista(); 
         };
