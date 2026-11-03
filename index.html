@@ -22,18 +22,33 @@
         
         <!-- HEADER Y NAVEGACIÓN -->
         <header class="mb-6 flex flex-col md:flex-row justify-between items-center glass-panel p-4 md:px-6 rounded-3xl gap-4">
-            <h1 class="text-3xl md:text-4xl font-black flex items-center gap-3 px-2">
+            
+            <!-- Logo Clicable -->
+            <h1 onclick="location.reload()" class="cursor-pointer hover:opacity-80 transition-opacity text-3xl md:text-4xl font-black flex items-center gap-3 px-2 select-none">
                 <span class="text-3xl">🍿</span> 
                 <span class="text-transparent bg-clip-text bg-gradient-to-r from-indigo-400 via-purple-400 to-pink-400">PeliSeries</span>
             </h1>
             
-            <div id="userLogged" class="hidden w-full md:w-auto flex flex-col md:flex-row items-center gap-4">
-                <div class="flex items-center gap-3 bg-gray-900/80 px-4 py-2.5 rounded-full border border-gray-700/60 shadow-inner">
+            <div id="userLogged" class="hidden w-full md:w-auto flex flex-col md:flex-row items-center gap-3">
+                <!-- Info Usuario -->
+                <div class="flex items-center gap-3 bg-gray-900/80 px-4 py-2.5 rounded-full border border-gray-700/60 shadow-inner shrink-0">
                     <span class="text-green-400 font-bold text-xs tracking-wider uppercase">✅ Conectado</span>
                     <div class="w-px h-4 bg-gray-700"></div>
                     <button id="logoutBtn" class="text-xs text-gray-400 hover:text-white transition-colors font-semibold uppercase tracking-wider">Salir</button>
                 </div>
-                <div class="flex items-center gap-1.5 glass-inset p-1.5 rounded-full w-full md:w-auto justify-center">
+
+                <!-- Botones Globales (Importar / Exportar) -->
+                <div class="flex items-center gap-1.5 shrink-0">
+                    <button onclick="abrirModalImportacion()" class="bg-gray-800/80 hover:bg-gray-700 text-gray-300 hover:text-white px-3 sm:px-4 py-2.5 rounded-full text-xs font-bold transition-all border border-gray-700 shadow-sm flex items-center gap-1.5">
+                        <span class="text-sm">📥</span> <span class="hidden sm:inline">Importar</span>
+                    </button>
+                    <button onclick="exportarAExcel()" class="bg-emerald-950/80 hover:bg-emerald-900 text-emerald-400 hover:text-white px-3 sm:px-4 py-2.5 rounded-full text-xs font-bold transition-all border border-emerald-800/60 shadow-sm flex items-center gap-1.5">
+                        <span class="text-sm">📊</span> <span class="hidden sm:inline">Excel</span>
+                    </button>
+                </div>
+
+                <!-- Navegación Principal -->
+                <div class="flex items-center gap-1.5 glass-inset p-1.5 rounded-full w-full md:w-auto justify-center shrink-0">
                     <button id="btnNavList" class="bg-gradient-to-r from-indigo-500 to-purple-600 px-6 py-2 rounded-full font-bold text-sm text-white transition-all shadow-lg shadow-indigo-500/25">Mi Lista</button>
                     <button id="btnNavSearch" class="bg-transparent hover:bg-white/5 px-6 py-2 rounded-full font-bold text-sm text-gray-400 transition-all">Buscador</button>
                 </div>
@@ -67,9 +82,6 @@
                         class="w-full p-4 rounded-xl bg-gray-900/90 border border-gray-700/80 focus:outline-none focus:ring-2 focus:ring-indigo-500 text-white text-base md:text-lg shadow-inner transition-all">
                     <button id="searchBtn" class="bg-gradient-to-r from-indigo-500 to-purple-600 hover:from-indigo-400 hover:to-purple-500 px-6 md:px-8 py-4 rounded-xl font-bold text-base md:text-lg transition-all text-white shadow-lg shadow-indigo-500/25 flex-shrink-0">Buscar</button>
                 </div>
-                <button onclick="abrirModalImportacion()" class="w-full md:w-auto bg-gray-800/80 hover:bg-gray-700 text-gray-300 hover:text-white px-5 py-4 rounded-xl text-sm font-bold transition-all flex items-center justify-center gap-2 flex-shrink-0 border border-gray-700 shadow">
-                    📥 Importar
-                </button>
             </div>
 
             <!-- Ordenación en Buscador -->
@@ -89,7 +101,7 @@
             <!-- CENTRO DE CONTROL ADAPTATIVO, ULTRA COMPACTO EN MÓVIL Y FIJO EN PANTALLA (STICKY) -->
             <div class="sticky top-2 z-30 glass-panel p-2 md:p-3.5 rounded-2xl mb-6 flex flex-col gap-2 shadow-2xl backdrop-blur-xl border border-white/10">
                 
-                <!-- FILA SUPERIOR: BUSCADOR, NOTAS DESTACADAS Y EXPORTAR -->
+                <!-- FILA SUPERIOR: BUSCADOR Y NOTAS DESTACADAS -->
                 <div class="flex flex-row items-center justify-between gap-2">
                     <!-- Buscador Local -->
                     <div class="flex items-center glass-inset px-2.5 py-1 rounded-xl shadow-inner flex-grow sm:flex-grow-0 sm:w-64 border border-gray-600/50 focus-within:border-indigo-500 transition-colors">
@@ -97,20 +109,14 @@
                         <input type="text" id="localSearchInput" placeholder="Buscar en mi lista..." class="bg-transparent text-xs md:text-sm text-white font-semibold focus:outline-none w-full py-0.5 placeholder-gray-500">
                     </div>
 
-                    <!-- Botón Exportar + Valoraciones Especiales -->
-                    <div class="flex items-center gap-1.5">
-                        <button onclick="exportarAExcel()" class="px-2.5 py-1 sm:py-1.5 rounded-xl text-[11px] md:text-xs font-bold transition-all bg-emerald-950/80 hover:bg-emerald-800 text-emerald-300 hover:text-white border border-emerald-700/60 shadow flex items-center gap-1">
-                            <span class="text-sm">📊</span> <span class="hidden sm:inline">Exportar Excel</span><span class="sm:hidden">Excel</span>
+                    <!-- Valoraciones Especiales -->
+                    <div class="flex items-center glass-inset p-0.5 sm:p-1 rounded-xl gap-1 shadow-inner shrink-0">
+                        <button id="btnFilterRating" class="px-2 sm:px-3 py-1 sm:py-1.5 rounded-lg text-[11px] md:text-xs font-bold transition-all bg-transparent text-gray-400 hover:bg-white/5 flex items-center gap-1">
+                            <span class="text-sm md:text-xl text-yellow-400">⭐</span> <span class="hidden sm:inline">TMDB 8+</span><span class="sm:hidden">8+</span>
                         </button>
-
-                        <div class="flex items-center glass-inset p-0.5 sm:p-1 rounded-xl gap-1 shadow-inner shrink-0">
-                            <button id="btnFilterRating" class="px-2 sm:px-3 py-1 sm:py-1.5 rounded-lg text-[11px] md:text-xs font-bold transition-all bg-transparent text-gray-400 hover:bg-white/5 flex items-center gap-1">
-                                <span class="text-sm md:text-xl text-yellow-400">⭐</span> <span class="hidden sm:inline">TMDB 8+</span><span class="sm:hidden">8+</span>
-                            </button>
-                            <button id="btnFilterMyRating" class="px-2 sm:px-3 py-1 sm:py-1.5 rounded-lg text-[11px] md:text-xs font-bold transition-all bg-transparent text-gray-400 hover:bg-white/5 flex items-center gap-1">
-                                <span class="text-sm md:text-xl text-blue-400">★</span> <span class="hidden sm:inline">Mi Nota 8+</span><span class="sm:hidden">Mi 8+</span>
-                            </button>
-                        </div>
+                        <button id="btnFilterMyRating" class="px-2 sm:px-3 py-1 sm:py-1.5 rounded-lg text-[11px] md:text-xs font-bold transition-all bg-transparent text-gray-400 hover:bg-white/5 flex items-center gap-1">
+                            <span class="text-sm md:text-xl text-blue-400">★</span> <span class="hidden sm:inline">Mi Nota 8+</span><span class="sm:hidden">Mi 8+</span>
+                        </button>
                     </div>
                 </div>
 
