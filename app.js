@@ -2,7 +2,6 @@
 const TMDB_TOKEN = 'eyJhbGciOiJIUzI1NiJ9.eyJhdWQiOiJmNTIyNzVlMDVhNTAxMjllZWYwMGRhN2Q5ZmU5NTZlZSIsIm5iZiI6MTc5MzU1NjUzNC4wMDcsInN1YiI6IjZhZTc4MDM2MWMyNDI4MTQ4MmM4ZGM2NSIsInNjb3BlcyI6WyJhcGlfcmVhZCJdLCJ2ZXJzaW9uIjoxfQ.b2COQUX-mmBdGPcxwCTUN7HI5EN6KNemlZSzbaD5NuI'; 
 const SUPABASE_URL = 'https://dqqfoucxbsvfdshruygt.supabase.co';
 const SUPABASE_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImRxcWZvdWN4YnN2ZmRzaHJ1eWd0Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3OTM1NDgyOTQsImV4cCI6MjEwOTEyNDI5NH0.Z4yVjtuuSrs3Pc5AghHFVeENOvmIeA8k34iWcVQiqIQ';
-
 const clienteSupabase = window.supabase.createClient(SUPABASE_URL, SUPABASE_KEY);
 
 // ESTADOS GLOBALES DE LA APP
@@ -12,20 +11,23 @@ let miListaTMDBIDs = [];
 let miBibliotecaLocal = []; 
 let vistosTemporal = []; 
 let totalSerieCapitulosGlobal = 0; 
+let currentDetailTrackingId = null; // Para guardar la nota personal
 
 // Filtros y Ordenación
-let filterTypes = ['movie', 'tv']; // Ahora es un Array (multi-selección)
+let filterTypes = ['movie', 'tv']; 
 let currentFilterStatus = 'all';
-let filterRating8Plus = false; // Toggle booleano para las notas
-let currentSort = 'recent'; // Orden por defecto: Recientes
+let filterRating8Plus = false; 
+let filterMyRating8Plus = false; // Toggle para nota personal
+let currentSort = 'recent'; 
 let currentSearchSort = 'rating'; 
+let localSearchQuery = ''; // Búsqueda local
 
-// ESTILOS PREMIUM PARA LOS BOTONES
-const btnPillActive = 'px-3 py-1.5 rounded-lg text-xs font-bold transition-all bg-gradient-to-r from-indigo-500 to-purple-600 text-white shadow-md flex items-center gap-1.5';
-const btnPillInactive = 'px-3 py-1.5 rounded-lg text-xs font-bold transition-all bg-transparent text-gray-400 hover:bg-white/5 flex items-center gap-1.5';
+// ESTILOS PREMIUM PARA LOS BOTONES (Ahora más grandes px-4 py-2 text-sm)
+const btnPillActive = 'px-4 py-2 rounded-xl text-sm font-bold transition-all bg-gradient-to-r from-indigo-500 to-purple-600 text-white shadow-md flex items-center gap-2';
+const btnPillInactive = 'px-4 py-2 rounded-xl text-sm font-bold transition-all bg-transparent text-gray-400 hover:bg-white/5 flex items-center gap-2';
 
-const searchPillActive = 'px-3.5 py-1.5 rounded-xl text-xs font-bold bg-gradient-to-r from-indigo-500 to-purple-600 text-white shadow-md transition-all';
-const searchPillInactive = 'px-3.5 py-1.5 rounded-xl text-xs font-bold bg-transparent text-gray-400 hover:bg-white/5 transition-all';
+const searchPillActive = 'px-4 py-2 rounded-xl text-sm font-bold bg-gradient-to-r from-indigo-500 to-purple-600 text-white shadow-md transition-all';
+const searchPillInactive = 'px-4 py-2 rounded-xl text-sm font-bold bg-transparent text-gray-400 hover:text-white transition-all';
 
 // ELEMENTOS DOM
 const authPanel = document.getElementById('authPanel');
@@ -33,6 +35,7 @@ const searchInput = document.getElementById('searchInput');
 const searchBtn = document.getElementById('searchBtn');
 const resultsGrid = document.getElementById('resultsGrid');
 const searchSortBar = document.getElementById('searchSortBar');
+const localSearchInput = document.getElementById('localSearchInput'); // Buscador local
 const loginBtn = document.getElementById('loginBtn');
 const registerBtn = document.getElementById('registerBtn'); 
 const logoutBtn = document.getElementById('logoutBtn');
@@ -54,7 +57,10 @@ const modalDetalle = document.getElementById('modalDetalle');
 const detailPoster = document.getElementById('detailPoster');
 const detailTitle = document.getElementById('detailTitle');
 const detailBadgeType = document.getElementById('detailBadgeType');
+const detailYear = document.getElementById('detailYear');
 const detailRating = document.getElementById('detailRating');
+const detailPersonalRating = document.getElementById('detailPersonalRating');
+const miValoracionContenedor = document.getElementById('miValoracionContenedor');
 const detailSeasons = document.getElementById('detailSeasons');
 const detailStatus = document.getElementById('detailStatus');
 const detailOverview = document.getElementById('detailOverview');
@@ -249,6 +255,8 @@ function renderResults(resultados) {
         const tipo = item.media_type === 'movie' ? 'Película' : 'Serie';
         const imgUrl = item.poster_path ? `https://image.tmdb.org/t/p/w500${item.poster_path}` : 'https://via.placeholder.com/500x750/1f2937/ffffff?text=Sin+Poster';
         const rating = item.vote_average ? item.vote_average.toFixed(1) : 'N/A';
+        const rawYear = (item.release_date || item.first_air_date || '').substring(0, 4);
+        const yearBadge = rawYear ? `<span class="ml-1 text-gray-500 font-normal">(${rawYear})</span>` : '';
 
         const yaLaTengo = miListaTMDBIDs.includes(item.id);
         const botonAñadir = yaLaTengo 
@@ -266,7 +274,7 @@ function renderResults(resultados) {
             </div>
             <div class="p-4 flex flex-col flex-grow bg-gray-900/60">
                 <span class="text-[9px] font-black uppercase tracking-widest text-indigo-400/80 mb-1">${tipo}</span>
-                <h3 class="font-bold text-sm leading-snug mb-3 line-clamp-2 group-hover:text-indigo-300 transition-colors">${titulo}</h3>
+                <h3 class="font-bold text-sm leading-snug mb-3 line-clamp-2 group-hover:text-indigo-300 transition-colors">${titulo} ${yearBadge}</h3>
                 ${botonAñadir}
             </div>
         `;
@@ -293,6 +301,12 @@ function updateBtnClassesMulti(selector, activeArray, dataAttr) {
     });
 }
 
+// Buscador Local
+localSearchInput.addEventListener('input', (e) => {
+    localSearchQuery = e.target.value.toLowerCase().trim();
+    aplicarFiltrosYDiseño();
+});
+
 // Event Listeners Categoría (Multi-selección)
 document.querySelectorAll('.filter-type-btn').forEach(btn => {
     btn.addEventListener('click', (e) => {
@@ -316,12 +330,21 @@ document.querySelectorAll('.filter-status-btn').forEach(btn => {
     });
 });
 
-// Event Listener Valoración (Toggle simple 8+)
+// Event Listener Valoración TMDB (Toggle simple 8+)
 const btnFilterRating = document.getElementById('btnFilterRating');
 btnFilterRating.addEventListener('click', () => {
     filterRating8Plus = !filterRating8Plus;
     if (filterRating8Plus) btnFilterRating.className = btnPillActive;
     else btnFilterRating.className = btnPillInactive;
+    aplicarFiltrosYDiseño();
+});
+
+// Event Listener Valoración Personal (Toggle simple 8+)
+const btnFilterMyRating = document.getElementById('btnFilterMyRating');
+btnFilterMyRating.addEventListener('click', () => {
+    filterMyRating8Plus = !filterMyRating8Plus;
+    if (filterMyRating8Plus) btnFilterMyRating.className = btnPillActive;
+    else btnFilterMyRating.className = btnPillInactive;
     aplicarFiltrosYDiseño();
 });
 
@@ -398,7 +421,7 @@ async function cargarMiLista() {
     if (!usuarioActual) return;
     myListGrid.innerHTML = '<p class="text-indigo-400 col-span-full text-center py-8">Cargando biblioteca personal...</p>';
 
-    // Intentamos traernos updated_at si la columna existe. Si no, Supabase lo ignorará limpiamente con el wildcard.
+    // Nos traemos personal_rating y updated_at si existen
     const { data, error } = await clienteSupabase.from('user_tracking')
         .select(`*, items ( id, tmdb_id, title, type, poster_path ), user_episodes (season_number, episode_number)`)
         .eq('user_id', usuarioActual.id);
@@ -422,7 +445,8 @@ async function cargarMiLista() {
                 overview: tmdbData.overview || 'Sin descripción disponible.',
                 seasons_count: tmdbData.number_of_seasons || 0,
                 is_ended: tmdbData.status === 'Ended' || tmdbData.status === 'Canceled',
-                seasons_data: tmdbData.seasons || []
+                seasons_data: tmdbData.seasons || [],
+                year: (tmdbData.release_date || tmdbData.first_air_date || '').substring(0, 4)
             };
             
             if (item.type === 'tv' && registro.status !== 'vista') {
@@ -430,14 +454,14 @@ async function cargarMiLista() {
                 const vistosCount = (registro.user_episodes || []).length;
                 if (vistosCount >= totalOficial && totalOficial > 0) {
                     registro.status = 'vista';
-                    actualizarEstadoSeguro(registro.id, 'vista'); // Actualización silente segura
+                    actualizarEstadoSeguro(registro.id, 'vista'); 
                 }
             }
 
             recalcularSiguienteCapitulo(registro);
             return registro;
         } catch(e) {
-            return { ...registro, details: { rating: 'N/A', overview: 'Sin datos.', seasons_count: 0, is_ended: false, next_episode: null } };
+            return { ...registro, details: { rating: 'N/A', overview: 'Sin datos.', seasons_count: 0, is_ended: false, next_episode: null, year: '' } };
         }
     }));
 
@@ -455,7 +479,18 @@ function aplicarFiltrosYDiseño() {
             if (isNaN(r) || r < 8) matchRating = false;
         }
 
-        return matchType && matchStatus && matchRating;
+        let matchMyRating = true;
+        if (filterMyRating8Plus) {
+            const mr = registro.personal_rating || 0;
+            if (mr < 8) matchMyRating = false;
+        }
+
+        let matchSearch = true;
+        if (localSearchQuery.length > 0) {
+            matchSearch = registro.items.title.toLowerCase().includes(localSearchQuery);
+        }
+
+        return matchType && matchStatus && matchRating && matchMyRating && matchSearch;
     });
 
     dataFiltrada.sort((a, b) => {
@@ -478,7 +513,7 @@ function aplicarFiltrosYDiseño() {
 function pintarMiLista(dataArray) {
     myListGrid.innerHTML = '';
     
-    if (dataArray.length === 0) return myListGrid.innerHTML = '<p class="text-gray-400 col-span-full text-center py-8">No hay resultados que coincidan con los filtros.</p>';
+    if (dataArray.length === 0) return myListGrid.innerHTML = '<p class="text-gray-400 col-span-full text-center py-8">No hay resultados que coincidan con la búsqueda o los filtros.</p>';
 
     dataArray.forEach(registro => {
         const item = registro.items; 
@@ -487,6 +522,11 @@ function pintarMiLista(dataArray) {
         
         let badgeSerie = '';
         let badgeNextEpisode = '';
+        
+        const yearBadge = details.year ? `<span class="ml-1 text-gray-500 font-normal">(${details.year})</span>` : '';
+        const miNotaBadge = (registro.personal_rating > 0) 
+            ? `<span class="absolute top-2 left-2 bg-blue-900/90 backdrop-blur-md text-blue-300 text-[11px] font-black px-2 py-1 rounded-lg border border-blue-500/50 shadow-md shadow-blue-900/50">★ ${registro.personal_rating}</span>`
+            : '';
 
         if (item.type === 'tv') {
             const estadoTexto = details.is_ended ? '🔴 Fin' : '🟢 Emisión';
@@ -505,18 +545,18 @@ function pintarMiLista(dataArray) {
 
         const card = document.createElement('div');
         
-        // Estilos fijos para cuadrícula mediana
         card.className = 'glass-panel rounded-2xl overflow-hidden shadow-xl hover:border-indigo-500/50 hover:shadow-indigo-500/10 transition-all cursor-pointer group flex flex-col relative';
         card.onclick = () => abrirModalDetalleDesdeLista(registro.id);
         
         card.innerHTML = `
             <div class="relative aspect-[2/3] overflow-hidden bg-gray-950">
                 <img src="${imgUrl}" alt="${item.title}" class="w-full h-full object-cover group-hover:scale-105 transition-transform duration-300">
+                ${miNotaBadge}
                 <span class="absolute top-2 right-2 bg-black/80 backdrop-blur-md text-yellow-400 text-[10px] font-bold px-2 py-1 rounded-lg border border-yellow-500/20 shadow-md">⭐ ${details.rating}</span>
             </div>
             <div class="p-3.5 flex flex-col flex-grow bg-gray-900/60">
                 <span class="text-[9px] font-black uppercase tracking-widest text-indigo-400/80 mb-1">${item.type === 'movie' ? 'Película' : 'Serie'}</span>
-                <h3 class="font-bold text-sm leading-snug mb-1 line-clamp-2 group-hover:text-indigo-300 transition-colors">${item.title}</h3>
+                <h3 class="font-bold text-sm leading-snug mb-1 line-clamp-2 group-hover:text-indigo-300 transition-colors">${item.title} ${yearBadge}</h3>
                 ${badgeSerie}
                 ${badgeNextEpisode}
                 <div class="mt-auto pt-4" onclick="event.stopPropagation()">
@@ -535,7 +575,7 @@ function pintarMiLista(dataArray) {
 
 
 // --- MODAL DE DETALLE, CRÉDITOS Y RECOMENDACIONES ---
-function cerrarModalDetalle() { modalDetalle.classList.add('hidden'); }
+function cerrarModalDetalle() { modalDetalle.classList.add('hidden'); currentDetailTrackingId = null; }
 
 async function cargarCreditos(tmdb_id, tipo) {
     detailCredits.innerHTML = '<span class="text-xs text-gray-500">Cargando ficha técnica...</span>';
@@ -618,8 +658,11 @@ async function abrirModalDetalleDesdeBusqueda(tmdb_id) {
     if (!item) return;
 
     modalDetalle.classList.remove('hidden');
+    miValoracionContenedor.classList.add('hidden'); // Oculto porque no está en la biblioteca aún
+    
     detailTitle.textContent = item.title || item.name;
     detailBadgeType.textContent = item.media_type === 'movie' ? 'Película' : 'Serie';
+    detailYear.textContent = (item.release_date || item.first_air_date || '').substring(0, 4);
     detailPoster.src = item.poster_path ? `https://image.tmdb.org/t/p/w500${item.poster_path}` : 'https://via.placeholder.com/500x750/1f2937/ffffff?text=Sin+Poster';
     detailRating.textContent = `⭐ ${item.vote_average ? item.vote_average.toFixed(1) : 'N/A'}`;
     detailOverview.textContent = item.overview || 'Sin descripción disponible en español.';
@@ -651,12 +694,20 @@ function abrirModalDetalleDesdeLista(tracking_id) {
     const registro = miBibliotecaLocal.find(r => r.id === tracking_id);
     if (!registro) return;
 
+    currentDetailTrackingId = tracking_id;
     const item = registro.items;
     const details = registro.details;
 
     modalDetalle.classList.remove('hidden');
+    
+    // Mostramos contenedor de Mi Valoración
+    miValoracionContenedor.classList.remove('hidden');
+    miValoracionContenedor.classList.add('flex');
+    detailPersonalRating.value = registro.personal_rating || '0';
+
     detailTitle.textContent = item.title;
     detailBadgeType.textContent = item.type === 'movie' ? 'Película' : 'Serie';
+    detailYear.textContent = details.year;
     detailPoster.src = item.poster_path ? `https://image.tmdb.org/t/p/w500${item.poster_path}` : 'https://via.placeholder.com/500x750/1f2937/ffffff?text=Sin+Poster';
     detailRating.textContent = `⭐ ${details.rating}`;
     detailOverview.textContent = details.overview;
@@ -684,6 +735,22 @@ function abrirModalDetalleDesdeLista(tracking_id) {
 
     cargarCreditos(item.tmdb_id, item.type);
     cargarRecomendaciones(item.tmdb_id, item.type);
+}
+
+// Nueva función para actualizar la nota personal
+async function cambiarNotaPersonal(valor) {
+    if (!currentDetailTrackingId) return;
+    const nuevaNota = parseInt(valor) || 0;
+    
+    // Actualizamos base de datos
+    await clienteSupabase.from('user_tracking').update({ personal_rating: nuevaNota }).eq('id', currentDetailTrackingId);
+    
+    // Actualizamos memoria local
+    const index = miBibliotecaLocal.findIndex(r => r.id === currentDetailTrackingId);
+    if(index > -1) {
+        miBibliotecaLocal[index].personal_rating = nuevaNota;
+    }
+    aplicarFiltrosYDiseño(); // Repinta en fondo para que al cerrar el modal ya esté actualizado
 }
 
 
@@ -732,8 +799,6 @@ async function actualizarEstadoSeguro(tracking_id, nuevoEstado) {
     const payload = { status: nuevoEstado, updated_at: new Date().toISOString() };
     const { error } = await clienteSupabase.from('user_tracking').update(payload).eq('id', tracking_id);
     
-    // Si la columna updated_at no existe en tu tabla, fallará con el código PGRST204.
-    // En ese caso, hace un fallback inteligente para actualizar solo el estado.
     if (error && error.code === 'PGRST204') {
         await clienteSupabase.from('user_tracking').update({ status: nuevoEstado }).eq('id', tracking_id);
     }
@@ -784,7 +849,7 @@ async function cambiarEstado(selectElement, tracking_id, tmdb_id, tipo, titulo) 
     const index = miBibliotecaLocal.findIndex(r => r.id === tracking_id);
     if(index > -1) {
         miBibliotecaLocal[index].status = nuevoEstado;
-        miBibliotecaLocal[index].updated_local = new Date().toISOString(); // Para que salte arriba instantáneamente
+        miBibliotecaLocal[index].updated_local = new Date().toISOString(); 
         if (nuevoEstado === 'pendiente') {
             miBibliotecaLocal[index].user_episodes = [];
             recalcularSiguienteCapitulo(miBibliotecaLocal[index]);
