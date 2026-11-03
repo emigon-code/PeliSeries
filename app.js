@@ -150,6 +150,11 @@ btnNavSearch.addEventListener('click', () => {
     resultsGrid.innerHTML = '';
     pelisYSeries = [];
     searchSortBar.classList.add('hidden');
+
+    // FOCUS AUTOMÁTICO EN EL BUSCADOR
+    setTimeout(() => {
+        searchInput.focus();
+    }, 50);
 });
 
 btnNavList.addEventListener('click', () => {
@@ -172,7 +177,6 @@ function abrirModalImportacion() {
     btnProcesarImport.onclick = procesarImportacion;
     btnProcesarImport.textContent = "Comenzar Importación";
     
-    // MEJORA 2: Colocar el foco automáticamente en el cuadro de escritura
     setTimeout(() => {
         importTextarea.focus();
     }, 50);
@@ -220,7 +224,7 @@ async function procesarImportacion() {
 }
 
 
-// --- MEJORA 3: EXPORTACIÓN A EXCEL (.XLSX) ---
+// --- EXPORTACIÓN A EXCEL (.XLSX) ---
 function exportarAExcel() {
     if (!miBibliotecaLocal || miBibliotecaLocal.length === 0) {
         return alert("No hay ningún elemento en tu lista para exportar.");
@@ -257,10 +261,8 @@ function exportarAExcel() {
         };
     });
 
-    // Crear libro y hoja de cálculo con SheetJS
     const hoja = XLSX.utils.json_to_sheet(datosFormateados);
     
-    // Ancho de columnas optimizado
     hoja['!cols'] = [
         { wch: 32 }, // Título
         { wch: 10 }, // Tipo
