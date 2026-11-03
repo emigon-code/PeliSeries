@@ -11,7 +11,7 @@
         body { background-color: #0b0f17; }
         .custom-scrollbar::-webkit-scrollbar { height: 6px; width: 6px; }
         .custom-scrollbar::-webkit-scrollbar-thumb { background-color: #4B5563; border-radius: 10px; }
-        .glass-panel { background: rgba(17, 24, 39, 0.75); backdrop-filter: blur(20px); -webkit-backdrop-filter: blur(20px); border: 1px solid rgba(255, 255, 255, 0.08); box-shadow: 0 20px 40px rgba(0,0,0,0.4); }
+        .glass-panel { background: rgba(17, 24, 39, 0.85); backdrop-filter: blur(20px); -webkit-backdrop-filter: blur(20px); border: 1px solid rgba(255, 255, 255, 0.1); box-shadow: 0 20px 40px rgba(0,0,0,0.5); }
         .glass-inset { background: rgba(11, 15, 23, 0.85); border: 1px solid rgba(255, 255, 255, 0.05); box-shadow: inset 0 2px 6px rgba(0,0,0,0.5); }
     </style>
 </head>
@@ -84,52 +84,70 @@
         <!-- VISTA 2: MI LISTA -->
         <div id="viewList">
             
-            <!-- CENTRO DE CONTROL ADAPTATIVO SIN SCROLL HORIZONTAL -->
-            <div class="glass-panel p-3 md:p-4 rounded-2xl mb-8 flex flex-col gap-3 shadow-xl">
+            <!-- CENTRO DE CONTROL ADAPTATIVO, ULTRA COMPACTO EN MÓVIL Y FIJO EN PANTALLA (STICKY) -->
+            <div class="sticky top-2 z-30 glass-panel p-2 md:p-3.5 rounded-2xl mb-6 flex flex-col gap-2 shadow-2xl backdrop-blur-xl border border-white/10">
                 
-                <!-- FILA SUPERIOR: BUSCADOR Y FILTROS DE NOTA 8+ -->
-                <div class="flex flex-col sm:flex-row gap-3 items-center justify-between">
+                <!-- FILA SUPERIOR: BUSCADOR Y NOTAS DESTACADAS -->
+                <div class="flex flex-row items-center justify-between gap-2">
                     <!-- Buscador Local -->
-                    <div class="flex items-center glass-inset p-1.5 rounded-xl shadow-inner w-full sm:max-w-xs border border-gray-600/50 focus-within:border-indigo-500 transition-colors">
-                        <span class="pl-2.5 pr-2 text-gray-400 text-base">🔍</span>
-                        <input type="text" id="localSearchInput" placeholder="Buscar en mi lista..." class="bg-transparent text-xs sm:text-sm text-white font-semibold focus:outline-none w-full py-1 placeholder-gray-500">
+                    <div class="flex items-center glass-inset px-2.5 py-1 rounded-xl shadow-inner flex-grow sm:flex-grow-0 sm:w-64 border border-gray-600/50 focus-within:border-indigo-500 transition-colors">
+                        <span class="text-gray-400 text-sm md:text-lg mr-1.5">🔍</span>
+                        <input type="text" id="localSearchInput" placeholder="Buscar en mi lista..." class="bg-transparent text-xs md:text-sm text-white font-semibold focus:outline-none w-full py-0.5 placeholder-gray-500">
                     </div>
 
                     <!-- Valoraciones Especiales -->
-                    <div class="flex items-center glass-inset p-1 rounded-xl gap-1 shadow-inner w-full sm:w-auto justify-center">
-                        <button id="btnFilterRating" class="px-3 py-1.5 rounded-lg text-xs font-bold transition-all bg-transparent text-gray-400 hover:bg-white/5 flex items-center gap-1.5">
-                            <span class="text-sm text-yellow-400">⭐</span> TMDB 8+
+                    <div class="flex items-center glass-inset p-0.5 sm:p-1 rounded-xl gap-1 shadow-inner shrink-0">
+                        <button id="btnFilterRating" class="px-2 sm:px-3 py-1 sm:py-1.5 rounded-lg text-[11px] md:text-xs font-bold transition-all bg-transparent text-gray-400 hover:bg-white/5 flex items-center gap-1">
+                            <span class="text-sm md:text-xl text-yellow-400">⭐</span> <span class="hidden sm:inline">TMDB 8+</span><span class="sm:hidden">8+</span>
                         </button>
-                        <button id="btnFilterMyRating" class="px-3 py-1.5 rounded-lg text-xs font-bold transition-all bg-transparent text-gray-400 hover:bg-white/5 flex items-center gap-1.5">
-                            <span class="text-sm text-blue-400">★</span> Mi Nota 8+
+                        <button id="btnFilterMyRating" class="px-2 sm:px-3 py-1 sm:py-1.5 rounded-lg text-[11px] md:text-xs font-bold transition-all bg-transparent text-gray-400 hover:bg-white/5 flex items-center gap-1">
+                            <span class="text-sm md:text-xl text-blue-400">★</span> <span class="hidden sm:inline">Mi Nota 8+</span><span class="sm:hidden">Mi 8+</span>
                         </button>
                     </div>
                 </div>
 
-                <div class="h-px bg-gray-700/50 w-full my-0.5"></div>
+                <div class="h-px bg-gray-700/40 w-full hidden sm:block"></div>
 
-                <!-- FILA INFERIOR: BOTONES AGRUPADOS (WRAP AUTOMÁTICO) -->
-                <div class="flex flex-wrap items-center justify-between gap-2">
+                <!-- FILA INFERIOR: AGRUPACIÓN DE CONTROLES PRINCIPALES -->
+                <div class="flex flex-wrap items-center justify-between gap-1.5 md:gap-2">
                     
                     <!-- Categoría (Películas / Series) -->
-                    <div class="flex items-center glass-inset p-1 rounded-xl gap-1 shadow-inner">
-                        <button data-filter-type="movie" class="filter-type-btn px-3 py-1.5 rounded-lg text-xs font-bold transition-all bg-gradient-to-r from-indigo-500 to-purple-600 text-white shadow-md flex items-center gap-1">🍿 Pelis</button>
-                        <button data-filter-type="tv" class="filter-type-btn px-3 py-1.5 rounded-lg text-xs font-bold transition-all bg-gradient-to-r from-indigo-500 to-purple-600 text-white shadow-md flex items-center gap-1">📺 Series</button>
+                    <div class="flex items-center glass-inset p-0.5 sm:p-1 rounded-xl gap-0.5 sm:gap-1 shadow-inner">
+                        <button data-filter-type="movie" class="filter-type-btn px-2 sm:px-3 py-1 sm:py-1.5 rounded-lg text-[11px] sm:text-xs font-bold transition-all bg-gradient-to-r from-indigo-500 to-purple-600 text-white shadow-md flex items-center gap-1">
+                            <span class="text-sm md:text-xl">🍿</span> <span class="text-[11px] md:text-xs">Pelis</span>
+                        </button>
+                        <button data-filter-type="tv" class="filter-type-btn px-2 sm:px-3 py-1 sm:py-1.5 rounded-lg text-[11px] sm:text-xs font-bold transition-all bg-gradient-to-r from-indigo-500 to-purple-600 text-white shadow-md flex items-center gap-1">
+                            <span class="text-sm md:text-xl">📺</span> <span class="text-[11px] md:text-xs">Series</span>
+                        </button>
                     </div>
 
                     <!-- Progreso / Estado -->
-                    <div class="flex items-center glass-inset p-1 rounded-xl gap-1 shadow-inner">
-                        <button data-filter-status="all" class="filter-status-btn px-2.5 py-1.5 rounded-lg text-xs font-bold transition-all bg-gradient-to-r from-indigo-500 to-purple-600 text-white shadow-md flex items-center gap-1" title="Todos los estados">♾️ <span class="hidden sm:inline">Todos</span></button>
-                        <button data-filter-status="pendiente" class="filter-status-btn px-2.5 py-1.5 rounded-lg text-xs font-bold transition-all bg-transparent text-gray-400 hover:bg-white/5 flex items-center gap-1" title="Pendientes">⏳ <span class="hidden sm:inline">Ptes</span></button>
-                        <button data-filter-status="viendo" class="filter-status-btn px-2.5 py-1.5 rounded-lg text-xs font-bold transition-all bg-transparent text-gray-400 hover:bg-white/5 flex items-center gap-1" title="En curso">👀 <span class="hidden sm:inline">Viendo</span></button>
-                        <button data-filter-status="vista" class="filter-status-btn px-2.5 py-1.5 rounded-lg text-xs font-bold transition-all bg-transparent text-gray-400 hover:bg-white/5 flex items-center gap-1" title="Completadas">✅ <span class="hidden sm:inline">Vistas</span></button>
+                    <div class="flex items-center glass-inset p-0.5 sm:p-1 rounded-xl gap-0.5 sm:gap-1 shadow-inner">
+                        <button data-filter-status="all" class="filter-status-btn px-2 sm:px-2.5 py-1 sm:py-1.5 rounded-lg text-[11px] sm:text-xs font-bold transition-all bg-gradient-to-r from-indigo-500 to-purple-600 text-white shadow-md flex items-center gap-1" title="Todos los estados">
+                            <span class="text-sm md:text-xl">♾️</span> <span class="hidden md:inline text-xs">Todos</span>
+                        </button>
+                        <button data-filter-status="pendiente" class="filter-status-btn px-2 sm:px-2.5 py-1 sm:py-1.5 rounded-lg text-[11px] sm:text-xs font-bold transition-all bg-transparent text-gray-400 hover:bg-white/5 flex items-center gap-1" title="Pendientes">
+                            <span class="text-sm md:text-xl">⏳</span> <span class="hidden md:inline text-xs">Ptes</span>
+                        </button>
+                        <button data-filter-status="viendo" class="filter-status-btn px-2 sm:px-2.5 py-1 sm:py-1.5 rounded-lg text-[11px] sm:text-xs font-bold transition-all bg-transparent text-gray-400 hover:bg-white/5 flex items-center gap-1" title="En curso">
+                            <span class="text-sm md:text-xl">👀</span> <span class="hidden md:inline text-xs">Viendo</span>
+                        </button>
+                        <button data-filter-status="vista" class="filter-status-btn px-2 sm:px-2.5 py-1 sm:py-1.5 rounded-lg text-[11px] sm:text-xs font-bold transition-all bg-transparent text-gray-400 hover:bg-white/5 flex items-center gap-1" title="Completadas">
+                            <span class="text-sm md:text-xl">✅</span> <span class="hidden md:inline text-xs">Vistas</span>
+                        </button>
                     </div>
 
                     <!-- Criterio de Ordenación -->
-                    <div class="flex items-center glass-inset p-1 rounded-xl gap-1 shadow-inner">
-                        <button data-sort="recent" class="sort-btn px-2.5 py-1.5 rounded-lg text-xs font-bold transition-all bg-gradient-to-r from-indigo-500 to-purple-600 text-white shadow-md flex items-center gap-1" title="Más Recientes">🕒 <span class="hidden sm:inline">Recientes</span></button>
-                        <button data-sort="title" class="sort-btn px-2.5 py-1.5 rounded-lg text-xs font-bold transition-all bg-transparent text-gray-400 hover:bg-white/5 flex items-center gap-1" title="Orden Alfabético">🔤 <span class="hidden sm:inline">A-Z</span></button>
-                        <button data-sort="rating" class="sort-btn px-2.5 py-1.5 rounded-lg text-xs font-bold transition-all bg-transparent text-gray-400 hover:bg-white/5 flex items-center gap-1" title="Por Nota TMDB">⭐ <span class="hidden sm:inline">Nota</span></button>
+                    <div class="flex items-center glass-inset p-0.5 sm:p-1 rounded-xl gap-0.5 sm:gap-1 shadow-inner">
+                        <button data-sort="recent" class="sort-btn px-2 sm:px-2.5 py-1 sm:py-1.5 rounded-lg text-[11px] sm:text-xs font-bold transition-all bg-gradient-to-r from-indigo-500 to-purple-600 text-white shadow-md flex items-center gap-1" title="Más Recientes">
+                            <span class="text-sm md:text-xl">🕒</span> <span class="hidden md:inline text-xs">Recientes</span>
+                        </button>
+                        <button data-sort="title" class="sort-btn px-2 sm:px-2.5 py-1 sm:py-1.5 rounded-lg text-[11px] sm:text-xs font-bold transition-all bg-transparent text-gray-400 hover:bg-white/5 flex items-center gap-1" title="Orden Alfabético">
+                            <span class="text-sm md:text-xl">🔤</span> <span class="hidden md:inline text-xs">A-Z</span>
+                        </button>
+                        <button data-sort="rating" class="sort-btn px-2 sm:px-2.5 py-1 sm:py-1.5 rounded-lg text-[11px] sm:text-xs font-bold transition-all bg-transparent text-gray-400 hover:bg-white/5 flex items-center gap-1" title="Por Nota TMDB">
+                            <span class="text-sm md:text-xl">⭐</span> <span class="hidden md:inline text-xs">Nota</span>
+                        </button>
                     </div>
 
                 </div>
