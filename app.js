@@ -19,6 +19,7 @@ let filterTypes = ['movie', 'tv'];
 let currentFilterStatus = 'all';
 let filterRating8Plus = false; 
 let filterMyRating8Plus = false; 
+let filterNovedades = false; 
 let currentSort = 'recent'; 
 let currentSearchSort = 'rating'; 
 let localSearchQuery = ''; 
@@ -74,6 +75,7 @@ const detailSeasonsContent = document.getElementById('detailSeasonsContent');
 const btnMarcarSerieDetalle = document.getElementById('btnMarcarSerieDetalle');
 
 const modalPersona = document.getElementById('modalPersona');
+const btnFilterNovedades = document.getElementById('btnFilterNovedades');
 
 
 // --- AUTENTICACIÓN MULTIUSUARIO ---
@@ -437,6 +439,12 @@ btnFilterMyRating.addEventListener('click', () => {
     aplicarFiltrosYDiseño();
 });
 
+// Event Listener Novedades (Capítulos Nuevos)
+btnFilterNovedades.addEventListener('click', () => {
+    filterNovedades = !filterNovedades;
+    aplicarFiltrosYDiseño();
+});
+
 // Event Listeners Ordenación
 document.querySelectorAll('.sort-btn').forEach(btn => {
     btn.addEventListener('click', (e) => {
@@ -564,6 +572,21 @@ async function cargarMiLista() {
 }
 
 function aplicarFiltrosYDiseño() {
+    // 1. Mostrar/ocultar y actualizar visualmente el botón de novedades
+    const hayNovedades = miBibliotecaLocal.some(r => r.has_new_episodes);
+    if (hayNovedades) {
+        btnFilterNovedades.classList.remove('hidden');
+        if (filterNovedades) {
+            btnFilterNovedades.className = 'px-2 sm:px-3 py-1 sm:py-1.5 rounded-lg text-[11px] md:text-xs font-bold transition-all bg-gradient-to-r from-pink-600 to-red-500 text-white shadow-[0_0_15px_rgba(219,39,119,0.6)] flex items-center gap-1';
+        } else {
+            btnFilterNovedades.className = 'px-2 sm:px-3 py-1 sm:py-1.5 rounded-lg text-[11px] md:text-xs font-bold transition-all bg-pink-950/40 text-pink-400 border border-pink-800/50 hover:bg-pink-900/60 flex items-center gap-1 animate-pulse';
+        }
+    } else {
+        btnFilterNovedades.classList.add('hidden');
+        filterNovedades = false; // Desactivar si ya no hay novedades
+    }
+
+    // 2. Aplicar el filtrado
     let dataFiltrada = miBibliotecaLocal.filter(registro => {
         const matchType = filterTypes.includes(registro.items.type);
         const matchStatus = currentFilterStatus === 'all' || registro.status === currentFilterStatus;
@@ -585,11 +608,20 @@ function aplicarFiltrosYDiseño() {
             matchSearch = registro.items.title.toLowerCase().includes(localSearchQuery);
         }
 
-        return matchType && matchStatus && matchRating && matchMyRating && matchSearch;
+        let matchNovedades = true;
+        if (filterNovedades && !registro.has_new_episodes) {
+            matchNovedades = false;
+        }
+
+        return matchType && matchStatus && matchRating && matchMyRating && matchSearch && matchNovedades;
     });
 
+    // 3. Aplicar ordenación (dando máxima prioridad a las novedades en "Recientes")
     dataFiltrada.sort((a, b) => {
         if (currentSort === 'recent') {
+            if (a.has_new_episodes && !b.has_new_episodes) return -1;
+            if (!a.has_new_episodes && b.has_new_episodes) return 1;
+
             const dateA = new Date(a.updated_at || a.created_at || a.updated_local || 0).getTime();
             const dateB = new Date(b.updated_at || b.created_at || b.updated_local || 0).getTime();
             return dateB - dateA;
@@ -943,10 +975,12 @@ async function cambiarEstado(selectElement, tracking_id, tmdb_id, tipo, titulo) 
 
     if (tipo === 'tv') {
         if (nuevoEstado === 'vista') {
+            // Acción Inmediata: sin preguntar
             await procesarSerieCompletaBBDD(tracking_id, tmdb_id);
             await cargarMiLista();
             return;
         } else if (nuevoEstado === 'pendiente') {
+            // Acción Inmediata: sin preguntar
             await clienteSupabase.from('user_episodes').delete().eq('tracking_id', tracking_id);
         }
     }
@@ -1057,6 +1091,7 @@ function evaluarBotonSerieCompleta(tracking_id, tmdb_id, titulo) {
             btnMarcarSerieDetalle.disabled = true;
             await procesarSerieCompletaBBDD(tracking_id, tmdb_id);
             await actualizarEstadoSeguro(tracking_id, 'vista');
+            // Al guardar sin avisar, renderizamos directo
             renderizarTemporadas(tmdb_id, tracking_id, titulo); 
             cargarMiLista(); 
         };
