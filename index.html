@@ -15,7 +15,7 @@
         .glass-inset { background: rgba(11, 15, 23, 0.85); border: 1px solid rgba(255, 255, 255, 0.05); box-shadow: inset 0 2px 6px rgba(0,0,0,0.5); }
     </style>
 </head>
-<body class="text-white min-h-screen p-4 md:p-6 font-sans antialiased">
+<body class="text-white min-h-screen p-3 md:p-6 font-sans antialiased">
     <div class="max-w-7xl mx-auto">
         
         <!-- HEADER Y NAVEGACIÓN -->
@@ -84,58 +84,58 @@
         <!-- VISTA 2: MI LISTA -->
         <div id="viewList">
             
-            <!-- CENTRO DE CONTROL REDISEÑADO CON BUSCADOR Y TAMAÑOS GRANDES -->
-            <div class="glass-panel p-3 md:p-4 rounded-2xl mb-8 flex flex-col md:flex-row items-center justify-between gap-4 shadow-xl">
+            <!-- CENTRO DE CONTROL ADAPTATIVO SIN SCROLL HORIZONTAL -->
+            <div class="glass-panel p-3 md:p-4 rounded-2xl mb-8 flex flex-col gap-3 shadow-xl">
                 
-                <div class="flex flex-row items-center gap-3 overflow-x-auto custom-scrollbar whitespace-nowrap w-full pb-2 md:pb-0">
+                <!-- FILA SUPERIOR: BUSCADOR Y FILTROS DE NOTA 8+ -->
+                <div class="flex flex-col sm:flex-row gap-3 items-center justify-between">
+                    <!-- Buscador Local -->
+                    <div class="flex items-center glass-inset p-1.5 rounded-xl shadow-inner w-full sm:max-w-xs border border-gray-600/50 focus-within:border-indigo-500 transition-colors">
+                        <span class="pl-2.5 pr-2 text-gray-400 text-base">🔍</span>
+                        <input type="text" id="localSearchInput" placeholder="Buscar en mi lista..." class="bg-transparent text-xs sm:text-sm text-white font-semibold focus:outline-none w-full py-1 placeholder-gray-500">
+                    </div>
+
+                    <!-- Valoraciones Especiales -->
+                    <div class="flex items-center glass-inset p-1 rounded-xl gap-1 shadow-inner w-full sm:w-auto justify-center">
+                        <button id="btnFilterRating" class="px-3 py-1.5 rounded-lg text-xs font-bold transition-all bg-transparent text-gray-400 hover:bg-white/5 flex items-center gap-1.5">
+                            <span class="text-sm text-yellow-400">⭐</span> TMDB 8+
+                        </button>
+                        <button id="btnFilterMyRating" class="px-3 py-1.5 rounded-lg text-xs font-bold transition-all bg-transparent text-gray-400 hover:bg-white/5 flex items-center gap-1.5">
+                            <span class="text-sm text-blue-400">★</span> Mi Nota 8+
+                        </button>
+                    </div>
+                </div>
+
+                <div class="h-px bg-gray-700/50 w-full my-0.5"></div>
+
+                <!-- FILA INFERIOR: BOTONES AGRUPADOS (WRAP AUTOMÁTICO) -->
+                <div class="flex flex-wrap items-center justify-between gap-2">
                     
-                    <!-- Categoría (Múltiple) -->
-                    <div class="flex items-center glass-inset p-1 rounded-2xl gap-1 shadow-inner shrink-0">
-                        <button data-filter-type="movie" class="filter-type-btn px-4 py-2 rounded-xl text-sm font-bold transition-all bg-gradient-to-r from-indigo-500 to-purple-600 text-white shadow-md flex items-center gap-2"><span class="text-lg">🍿</span> Pelis</button>
-                        <button data-filter-type="tv" class="filter-type-btn px-4 py-2 rounded-xl text-sm font-bold transition-all bg-gradient-to-r from-indigo-500 to-purple-600 text-white shadow-md flex items-center gap-2"><span class="text-lg">📺</span> Series</button>
+                    <!-- Categoría (Películas / Series) -->
+                    <div class="flex items-center glass-inset p-1 rounded-xl gap-1 shadow-inner">
+                        <button data-filter-type="movie" class="filter-type-btn px-3 py-1.5 rounded-lg text-xs font-bold transition-all bg-gradient-to-r from-indigo-500 to-purple-600 text-white shadow-md flex items-center gap-1">🍿 Pelis</button>
+                        <button data-filter-type="tv" class="filter-type-btn px-3 py-1.5 rounded-lg text-xs font-bold transition-all bg-gradient-to-r from-indigo-500 to-purple-600 text-white shadow-md flex items-center gap-1">📺 Series</button>
                     </div>
 
-                    <!-- Progreso -->
-                    <div class="flex items-center glass-inset p-1 rounded-2xl gap-1 shadow-inner shrink-0">
-                        <button data-filter-status="all" class="filter-status-btn px-4 py-2 rounded-xl text-sm font-bold transition-all bg-gradient-to-r from-indigo-500 to-purple-600 text-white shadow-md flex items-center gap-2"><span class="text-lg">♾️</span></button>
-                        <button data-filter-status="pendiente" class="filter-status-btn px-4 py-2 rounded-xl text-sm font-bold transition-all bg-transparent text-gray-400 hover:bg-white/5 flex items-center gap-2"><span class="text-lg">⏳</span> Ptes</button>
-                        <button data-filter-status="viendo" class="filter-status-btn px-4 py-2 rounded-xl text-sm font-bold transition-all bg-transparent text-gray-400 hover:bg-white/5 flex items-center gap-2"><span class="text-lg">👀</span> Viendo</button>
-                        <button data-filter-status="vista" class="filter-status-btn px-4 py-2 rounded-xl text-sm font-bold transition-all bg-transparent text-gray-400 hover:bg-white/5 flex items-center gap-2"><span class="text-lg">✅</span> Vistas</button>
+                    <!-- Progreso / Estado -->
+                    <div class="flex items-center glass-inset p-1 rounded-xl gap-1 shadow-inner">
+                        <button data-filter-status="all" class="filter-status-btn px-2.5 py-1.5 rounded-lg text-xs font-bold transition-all bg-gradient-to-r from-indigo-500 to-purple-600 text-white shadow-md flex items-center gap-1" title="Todos los estados">♾️ <span class="hidden sm:inline">Todos</span></button>
+                        <button data-filter-status="pendiente" class="filter-status-btn px-2.5 py-1.5 rounded-lg text-xs font-bold transition-all bg-transparent text-gray-400 hover:bg-white/5 flex items-center gap-1" title="Pendientes">⏳ <span class="hidden sm:inline">Ptes</span></button>
+                        <button data-filter-status="viendo" class="filter-status-btn px-2.5 py-1.5 rounded-lg text-xs font-bold transition-all bg-transparent text-gray-400 hover:bg-white/5 flex items-center gap-1" title="En curso">👀 <span class="hidden sm:inline">Viendo</span></button>
+                        <button data-filter-status="vista" class="filter-status-btn px-2.5 py-1.5 rounded-lg text-xs font-bold transition-all bg-transparent text-gray-400 hover:bg-white/5 flex items-center gap-1" title="Completadas">✅ <span class="hidden sm:inline">Vistas</span></button>
                     </div>
 
-                    <!-- Valoración TMDB (Toggle) -->
-                    <div class="flex items-center glass-inset p-1 rounded-2xl gap-1 shadow-inner shrink-0">
-                        <button id="btnFilterRating" class="px-4 py-2 rounded-xl text-sm font-bold transition-all bg-transparent text-gray-400 hover:bg-white/5 flex items-center gap-2">
-                            <span class="text-lg text-yellow-400">⭐</span> TMDB 8+
-                        </button>
+                    <!-- Criterio de Ordenación -->
+                    <div class="flex items-center glass-inset p-1 rounded-xl gap-1 shadow-inner">
+                        <button data-sort="recent" class="sort-btn px-2.5 py-1.5 rounded-lg text-xs font-bold transition-all bg-gradient-to-r from-indigo-500 to-purple-600 text-white shadow-md flex items-center gap-1" title="Más Recientes">🕒 <span class="hidden sm:inline">Recientes</span></button>
+                        <button data-sort="title" class="sort-btn px-2.5 py-1.5 rounded-lg text-xs font-bold transition-all bg-transparent text-gray-400 hover:bg-white/5 flex items-center gap-1" title="Orden Alfabético">🔤 <span class="hidden sm:inline">A-Z</span></button>
+                        <button data-sort="rating" class="sort-btn px-2.5 py-1.5 rounded-lg text-xs font-bold transition-all bg-transparent text-gray-400 hover:bg-white/5 flex items-center gap-1" title="Por Nota TMDB">⭐ <span class="hidden sm:inline">Nota</span></button>
                     </div>
 
-                    <!-- Valoración Personal (Toggle) -->
-                    <div class="flex items-center glass-inset p-1 rounded-2xl gap-1 shadow-inner shrink-0">
-                        <button id="btnFilterMyRating" class="px-4 py-2 rounded-xl text-sm font-bold transition-all bg-transparent text-gray-400 hover:bg-white/5 flex items-center gap-2">
-                            <span class="text-lg text-blue-400">★</span> Mi Nota 8+
-                        </button>
-                    </div>
-
-                    <div class="w-px h-8 bg-gray-700/80 shrink-0 mx-2"></div>
-
-                    <!-- Ordenar -->
-                    <div class="flex items-center glass-inset p-1 rounded-2xl gap-1 shadow-inner shrink-0">
-                        <button data-sort="recent" class="sort-btn px-4 py-2 rounded-xl text-sm font-bold transition-all bg-gradient-to-r from-indigo-500 to-purple-600 text-white shadow-md flex items-center gap-2"><span class="text-lg">🕒</span> Recientes</button>
-                        <button data-sort="title" class="sort-btn px-4 py-2 rounded-xl text-sm font-bold transition-all bg-transparent text-gray-400 hover:bg-white/5 flex items-center gap-2"><span class="text-lg">🔤</span> A-Z</button>
-                        <button data-sort="rating" class="sort-btn px-4 py-2 rounded-xl text-sm font-bold transition-all bg-transparent text-gray-400 hover:bg-white/5 flex items-center gap-2"><span class="text-lg text-yellow-400">⭐</span> Nota</button>
-                    </div>
                 </div>
-
-                <!-- Buscador Local -->
-                <div class="flex items-center glass-inset p-1.5 rounded-2xl shadow-inner shrink-0 w-full md:w-64 border border-gray-600/50 focus-within:border-indigo-500 transition-colors">
-                    <span class="pl-3 pr-2 text-gray-400 text-lg">🔍</span>
-                    <input type="text" id="localSearchInput" placeholder="Buscar en mi lista..." class="bg-transparent text-sm text-white font-semibold focus:outline-none w-full py-1.5 placeholder-gray-500">
-                </div>
-
             </div>
 
-            <!-- Contenedor Dinámico de Mi Lista (Fijo en Cuadrícula Mediana) -->
+            <!-- Contenedor Dinámico de Mi Lista (Cuadrícula Mediana) -->
             <div id="myListGrid" class="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 gap-4 md:gap-6"></div>
         </div>
 
@@ -177,7 +177,7 @@
                         <div class="flex flex-wrap items-center gap-3 text-sm text-gray-300 mb-4">
                             <span id="detailRating" class="bg-yellow-500/20 text-yellow-400 px-2.5 py-1 rounded-lg font-bold border border-yellow-500/30">⭐ 0.0</span>
                             
-                            <!-- NUEVO: Mi Valoración -->
+                            <!-- Mi Valoración -->
                             <div id="miValoracionContenedor" class="hidden items-center gap-2 bg-blue-900/20 border border-blue-500/30 px-2.5 py-1 rounded-lg">
                                 <span class="text-xs font-bold text-blue-400 uppercase tracking-widest">Mi Nota:</span>
                                 <select id="detailPersonalRating" onchange="cambiarNotaPersonal(this.value)" class="bg-transparent text-blue-300 text-sm font-bold outline-none cursor-pointer">
