@@ -13,16 +13,14 @@ let miBibliotecaLocal = [];
 let vistosTemporal = []; 
 let totalSerieCapitulosGlobal = 0; 
 
-// Filtros, Ordenación y Diseño
-let currentFilterType = 'all';
+// Filtros y Ordenación
+let filterTypes = ['movie', 'tv']; // Ahora es un Array (multi-selección)
 let currentFilterStatus = 'all';
-let currentFilterRating = 0; 
-let currentSort = 'rating'; 
+let filterRating8Plus = false; // Toggle booleano para las notas
+let currentSort = 'recent'; // Orden por defecto: Recientes
 let currentSearchSort = 'rating'; 
-let currentLayoutMode = 'grid'; 
-let currentPosterSize = 'medium'; 
 
-// ESTILOS PREMIUM PARA LOS BOTONES (Ahora más compactos px-3 py-1.5)
+// ESTILOS PREMIUM PARA LOS BOTONES
 const btnPillActive = 'px-3 py-1.5 rounded-lg text-xs font-bold transition-all bg-gradient-to-r from-indigo-500 to-purple-600 text-white shadow-md flex items-center gap-1.5';
 const btnPillInactive = 'px-3 py-1.5 rounded-lg text-xs font-bold transition-all bg-transparent text-gray-400 hover:bg-white/5 flex items-center gap-1.5';
 
@@ -36,7 +34,7 @@ const searchBtn = document.getElementById('searchBtn');
 const resultsGrid = document.getElementById('resultsGrid');
 const searchSortBar = document.getElementById('searchSortBar');
 const loginBtn = document.getElementById('loginBtn');
-const registerBtn = document.getElementById('registerBtn'); // Nuevo botón
+const registerBtn = document.getElementById('registerBtn'); 
 const logoutBtn = document.getElementById('logoutBtn');
 const emailInput = document.getElementById('emailInput');
 const passInput = document.getElementById('passInput');
@@ -125,7 +123,7 @@ document.addEventListener('keydown', (e) => {
     if (e.key === 'Escape') {
         cerrarModalDetalle();
         cerrarModalImportacion();
-        cerrarModal(); // Episodios
+        cerrarModal(); 
         cerrarModalPersona();
     }
 });
@@ -278,69 +276,62 @@ function renderResults(resultados) {
 
 
 // --- GESTIÓN VISUAL DEL CENTRO DE CONTROL DE MI LISTA ---
-function updateBtnClasses(selector, activeValue, dataAttr) {
+function updateBtnClassesSingle(selector, activeValue, dataAttr) {
     const baseClass = selector.replace('.', '');
     document.querySelectorAll(selector).forEach(btn => {
-        // Mantenemos los iconos dentro del botón
-        const content = btn.innerHTML;
-        if(btn.getAttribute(dataAttr) == activeValue) {
-            btn.className = `${baseClass} ${btnPillActive}`;
-        } else {
-            btn.className = `${baseClass} ${btnPillInactive}`;
-        }
+        if(btn.getAttribute(dataAttr) === activeValue) btn.className = `${baseClass} ${btnPillActive}`;
+        else btn.className = `${baseClass} ${btnPillInactive}`;
     });
 }
 
+function updateBtnClassesMulti(selector, activeArray, dataAttr) {
+    const baseClass = selector.replace('.', '');
+    document.querySelectorAll(selector).forEach(btn => {
+        const val = btn.getAttribute(dataAttr);
+        if(activeArray.includes(val)) btn.className = `${baseClass} ${btnPillActive}`;
+        else btn.className = `${baseClass} ${btnPillInactive}`;
+    });
+}
+
+// Event Listeners Categoría (Multi-selección)
 document.querySelectorAll('.filter-type-btn').forEach(btn => {
     btn.addEventListener('click', (e) => {
-        currentFilterType = e.currentTarget.getAttribute('data-filter-type');
-        updateBtnClasses('.filter-type-btn', currentFilterType, 'data-filter-type');
+        const selectedType = e.currentTarget.getAttribute('data-filter-type');
+        if (filterTypes.includes(selectedType)) {
+            if (filterTypes.length > 1) filterTypes = filterTypes.filter(t => t !== selectedType);
+        } else {
+            filterTypes.push(selectedType);
+        }
+        updateBtnClassesMulti('.filter-type-btn', filterTypes, 'data-filter-type');
         aplicarFiltrosYDiseño();
     });
 });
+
+// Event Listeners Progreso
 document.querySelectorAll('.filter-status-btn').forEach(btn => {
     btn.addEventListener('click', (e) => {
         currentFilterStatus = e.currentTarget.getAttribute('data-filter-status');
-        updateBtnClasses('.filter-status-btn', currentFilterStatus, 'data-filter-status');
+        updateBtnClassesSingle('.filter-status-btn', currentFilterStatus, 'data-filter-status');
         aplicarFiltrosYDiseño();
     });
 });
-document.querySelectorAll('.filter-rating-btn').forEach(btn => {
-    btn.addEventListener('click', (e) => {
-        currentFilterRating = parseFloat(e.currentTarget.getAttribute('data-filter-rating'));
-        updateBtnClasses('.filter-rating-btn', currentFilterRating, 'data-filter-rating');
-        aplicarFiltrosYDiseño();
-    });
+
+// Event Listener Valoración (Toggle simple 8+)
+const btnFilterRating = document.getElementById('btnFilterRating');
+btnFilterRating.addEventListener('click', () => {
+    filterRating8Plus = !filterRating8Plus;
+    if (filterRating8Plus) btnFilterRating.className = btnPillActive;
+    else btnFilterRating.className = btnPillInactive;
+    aplicarFiltrosYDiseño();
 });
+
+// Event Listeners Ordenación
 document.querySelectorAll('.sort-btn').forEach(btn => {
     btn.addEventListener('click', (e) => {
         currentSort = e.currentTarget.getAttribute('data-sort');
-        updateBtnClasses('.sort-btn', currentSort, 'data-sort');
+        updateBtnClassesSingle('.sort-btn', currentSort, 'data-sort');
         aplicarFiltrosYDiseño();
     });
-});
-document.querySelectorAll('.size-btn').forEach(btn => {
-    btn.addEventListener('click', (e) => {
-        currentPosterSize = e.currentTarget.getAttribute('data-size');
-        updateBtnClasses('.size-btn', currentPosterSize, 'data-size');
-        aplicarFiltrosYDiseño();
-    });
-});
-
-const btnViewGrid = document.getElementById('btnViewGrid');
-const btnViewList = document.getElementById('btnViewList');
-
-btnViewGrid.addEventListener('click', () => {
-    currentLayoutMode = 'grid';
-    btnViewGrid.className = `layout-btn ${btnPillActive.replace('gap-1.5', '')}`;
-    btnViewList.className = `layout-btn ${btnPillInactive.replace('gap-1.5', '')}`;
-    aplicarFiltrosYDiseño();
-});
-btnViewList.addEventListener('click', () => {
-    currentLayoutMode = 'list';
-    btnViewList.className = `layout-btn ${btnPillActive.replace('gap-1.5', '')}`;
-    btnViewGrid.className = `layout-btn ${btnPillInactive.replace('gap-1.5', '')}`;
-    aplicarFiltrosYDiseño();
 });
 
 
@@ -407,9 +398,10 @@ async function cargarMiLista() {
     if (!usuarioActual) return;
     myListGrid.innerHTML = '<p class="text-indigo-400 col-span-full text-center py-8">Cargando biblioteca personal...</p>';
 
+    // Intentamos traernos updated_at si la columna existe. Si no, Supabase lo ignorará limpiamente con el wildcard.
     const { data, error } = await clienteSupabase.from('user_tracking')
-        .select(`id, status, items ( id, tmdb_id, title, type, poster_path ), user_episodes (season_number, episode_number)`)
-        .eq('user_id', usuarioActual.id).order('created_at', { ascending: false });
+        .select(`*, items ( id, tmdb_id, title, type, poster_path ), user_episodes (season_number, episode_number)`)
+        .eq('user_id', usuarioActual.id);
 
     if (error || data.length === 0) {
         miBibliotecaLocal = [];
@@ -438,7 +430,7 @@ async function cargarMiLista() {
                 const vistosCount = (registro.user_episodes || []).length;
                 if (vistosCount >= totalOficial && totalOficial > 0) {
                     registro.status = 'vista';
-                    await clienteSupabase.from('user_tracking').update({ status: 'vista' }).eq('id', registro.id);
+                    actualizarEstadoSeguro(registro.id, 'vista'); // Actualización silente segura
                 }
             }
 
@@ -454,23 +446,24 @@ async function cargarMiLista() {
 
 function aplicarFiltrosYDiseño() {
     let dataFiltrada = miBibliotecaLocal.filter(registro => {
-        const matchType = currentFilterType === 'all' || registro.items.type === currentFilterType;
+        const matchType = filterTypes.includes(registro.items.type);
         const matchStatus = currentFilterStatus === 'all' || registro.status === currentFilterStatus;
         
         let matchRating = true;
-        if (currentFilterRating === 8) {
+        if (filterRating8Plus) {
             const r = parseFloat(registro.details.rating);
             if (isNaN(r) || r < 8) matchRating = false;
-        } else if (currentFilterRating === 6) {
-            const r = parseFloat(registro.details.rating);
-            if (isNaN(r) || r < 6 || r >= 8) matchRating = false;
         }
 
         return matchType && matchStatus && matchRating;
     });
 
     dataFiltrada.sort((a, b) => {
-        if (currentSort === 'title') {
+        if (currentSort === 'recent') {
+            const dateA = new Date(a.updated_at || a.created_at || a.updated_local || 0).getTime();
+            const dateB = new Date(b.updated_at || b.created_at || b.updated_local || 0).getTime();
+            return dateB - dateA;
+        } else if (currentSort === 'title') {
             return a.items.title.localeCompare(b.items.title);
         } else {
             const rA = parseFloat(a.details.rating) || 0;
@@ -485,15 +478,6 @@ function aplicarFiltrosYDiseño() {
 function pintarMiLista(dataArray) {
     myListGrid.innerHTML = '';
     
-    if (currentLayoutMode === 'list') {
-        myListGrid.className = 'flex flex-col gap-3 md:gap-4';
-    } else {
-        let sizeClass = 'grid-cols-3 sm:grid-cols-4 md:grid-cols-6 lg:grid-cols-7 gap-3 md:gap-4';
-        if (currentPosterSize === 'small') sizeClass = 'grid-cols-4 sm:grid-cols-5 md:grid-cols-7 lg:grid-cols-8 gap-2 md:gap-3';
-        if (currentPosterSize === 'large') sizeClass = 'grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 gap-4 md:gap-6';
-        myListGrid.className = `grid ${sizeClass}`;
-    }
-
     if (dataArray.length === 0) return myListGrid.innerHTML = '<p class="text-gray-400 col-span-full text-center py-8">No hay resultados que coincidan con los filtros.</p>';
 
     dataArray.forEach(registro => {
@@ -521,70 +505,30 @@ function pintarMiLista(dataArray) {
 
         const card = document.createElement('div');
         
-        if (currentLayoutMode === 'list') {
-            let listImgClasses = 'w-20 sm:w-24 h-28 sm:h-36';
-            let listTitleClasses = 'text-base sm:text-lg';
-            if (currentPosterSize === 'small') {
-                listImgClasses = 'w-16 sm:w-20 h-24 sm:h-28';
-                listTitleClasses = 'text-sm sm:text-base';
-            } else if (currentPosterSize === 'large') {
-                listImgClasses = 'w-24 sm:w-32 h-36 sm:h-48';
-                listTitleClasses = 'text-lg sm:text-xl';
-            }
-
-            card.className = 'glass-panel rounded-2xl overflow-hidden shadow-xl hover:border-indigo-500/50 hover:shadow-indigo-500/10 transition-all cursor-pointer group flex flex-row items-center p-3 md:p-4 gap-4';
-            card.onclick = () => abrirModalDetalleDesdeLista(registro.id);
-            
-            card.innerHTML = `
-                <img src="${imgUrl}" alt="${item.title}" class="${listImgClasses} object-cover rounded-xl flex-shrink-0 shadow-md">
-                <div class="flex flex-col flex-grow min-w-0">
-                    <div class="flex items-center gap-2 mb-1.5">
-                        <span class="text-[9px] font-black uppercase tracking-widest px-2.5 py-0.5 rounded-md bg-gray-800 text-indigo-300 border border-gray-700">${item.type === 'movie' ? 'Película' : 'Serie'}</span>
-                        <span class="text-xs font-bold text-yellow-400">⭐ ${details.rating}</span>
-                    </div>
-                    <h3 class="font-bold ${listTitleClasses} text-white truncate">${item.title}</h3>
-                    ${badgeSerie}
-                    ${badgeNextEpisode}
-                    <p class="text-xs text-gray-400 mt-2 line-clamp-2 hidden sm:block">${details.overview}</p>
-                </div>
-                <div class="flex flex-col gap-2 flex-shrink-0 min-w-[130px]" onclick="event.stopPropagation()">
+        // Estilos fijos para cuadrícula mediana
+        card.className = 'glass-panel rounded-2xl overflow-hidden shadow-xl hover:border-indigo-500/50 hover:shadow-indigo-500/10 transition-all cursor-pointer group flex flex-col relative';
+        card.onclick = () => abrirModalDetalleDesdeLista(registro.id);
+        
+        card.innerHTML = `
+            <div class="relative aspect-[2/3] overflow-hidden bg-gray-950">
+                <img src="${imgUrl}" alt="${item.title}" class="w-full h-full object-cover group-hover:scale-105 transition-transform duration-300">
+                <span class="absolute top-2 right-2 bg-black/80 backdrop-blur-md text-yellow-400 text-[10px] font-bold px-2 py-1 rounded-lg border border-yellow-500/20 shadow-md">⭐ ${details.rating}</span>
+            </div>
+            <div class="p-3.5 flex flex-col flex-grow bg-gray-900/60">
+                <span class="text-[9px] font-black uppercase tracking-widest text-indigo-400/80 mb-1">${item.type === 'movie' ? 'Película' : 'Serie'}</span>
+                <h3 class="font-bold text-sm leading-snug mb-1 line-clamp-2 group-hover:text-indigo-300 transition-colors">${item.title}</h3>
+                ${badgeSerie}
+                ${badgeNextEpisode}
+                <div class="mt-auto pt-4" onclick="event.stopPropagation()">
                     <select onchange="cambiarEstado(this, '${registro.id}', ${item.tmdb_id}, '${item.type}', '${item.title.replace(/'/g, "\\'")}')" 
-                            class="w-full bg-gray-900/90 text-white text-xs font-semibold rounded-xl p-3 focus:ring-2 focus:ring-indigo-500 border border-gray-700 outline-none hover:bg-gray-800 transition-colors cursor-pointer shadow-inner">
+                            class="w-full bg-gray-900/90 text-white text-xs font-semibold rounded-xl p-2.5 focus:ring-2 focus:ring-indigo-500 border border-gray-700 outline-none hover:bg-gray-800 transition-colors cursor-pointer shadow-inner">
                         <option value="pendiente" ${registro.status === 'pendiente' ? 'selected' : ''}>⏳ Pendiente</option>
                         <option value="viendo" ${registro.status === 'viendo' ? 'selected' : ''}>👀 Viendo</option>
                         <option value="vista" ${registro.status === 'vista' ? 'selected' : ''}>✅ Vista</option>
                     </select>
                 </div>
-            `;
-        } else {
-            let titleClass = 'text-sm';
-            let typeClass = 'text-[9px]';
-            if (currentPosterSize === 'small') { titleClass = 'text-xs'; typeClass = 'text-[8px]'; }
-
-            card.className = 'glass-panel rounded-2xl overflow-hidden shadow-xl hover:border-indigo-500/50 hover:shadow-indigo-500/10 transition-all cursor-pointer group flex flex-col relative';
-            card.onclick = () => abrirModalDetalleDesdeLista(registro.id);
-            
-            card.innerHTML = `
-                <div class="relative aspect-[2/3] overflow-hidden bg-gray-950">
-                    <img src="${imgUrl}" alt="${item.title}" class="w-full h-full object-cover group-hover:scale-105 transition-transform duration-300">
-                    <span class="absolute top-2 right-2 bg-black/80 backdrop-blur-md text-yellow-400 text-[10px] font-bold px-2 py-1 rounded-lg border border-yellow-500/20 shadow-md">⭐ ${details.rating}</span>
-                </div>
-                <div class="p-3.5 flex flex-col flex-grow bg-gray-900/60">
-                    <span class="${typeClass} font-black uppercase tracking-widest text-indigo-400/80 mb-1">${item.type === 'movie' ? 'Película' : 'Serie'}</span>
-                    <h3 class="font-bold ${titleClass} leading-snug mb-1 line-clamp-2 group-hover:text-indigo-300 transition-colors">${item.title}</h3>
-                    ${badgeSerie}
-                    ${badgeNextEpisode}
-                    <div class="mt-auto pt-4" onclick="event.stopPropagation()">
-                        <select onchange="cambiarEstado(this, '${registro.id}', ${item.tmdb_id}, '${item.type}', '${item.title.replace(/'/g, "\\'")}')" 
-                                class="w-full bg-gray-900/90 text-white text-xs font-semibold rounded-xl p-2.5 focus:ring-2 focus:ring-indigo-500 border border-gray-700 outline-none hover:bg-gray-800 transition-colors cursor-pointer shadow-inner">
-                            <option value="pendiente" ${registro.status === 'pendiente' ? 'selected' : ''}>⏳ Pendiente</option>
-                            <option value="viendo" ${registro.status === 'viendo' ? 'selected' : ''}>👀 Viendo</option>
-                            <option value="vista" ${registro.status === 'vista' ? 'selected' : ''}>✅ Vista</option>
-                        </select>
-                    </div>
-                </div>
-            `;
-        }
+            </div>
+        `;
         myListGrid.appendChild(card);
     });
 }
@@ -599,10 +543,9 @@ async function cargarCreditos(tmdb_id, tipo) {
         const res = await fetch(`https://api.themoviedb.org/3/${tipo}/${tmdb_id}/credits?language=es-ES`, { headers: { Authorization: `Bearer ${TMDB_TOKEN}` } });
         const data = await res.json();
         
-        // Buscamos a los responsables clave
         const director = data.crew.find(c => c.job === 'Director') || data.crew.find(c => c.department === 'Directing');
         const musico = data.crew.find(c => c.job === 'Original Music Composer' || c.job === 'Music');
-        const reparto = data.cast.slice(0, 6); // Extraemos el Top 6 de actores
+        const reparto = data.cast.slice(0, 6);
 
         let html = '';
         if (director) html += crearPillPersona('🎬 Dirección', director);
@@ -757,7 +700,6 @@ async function abrirModalPersona(personId, personName) {
         const res = await fetch(`https://api.themoviedb.org/3/person/${personId}/combined_credits?language=es-ES`, { headers: { Authorization: `Bearer ${TMDB_TOKEN}` } });
         const data = await res.json();
         
-        // Ordenamos por popularidad para mostrar sus mejores/más conocidos trabajos y nos quedamos con los 15 mejores
         const trabajos = data.cast.sort((a,b) => b.popularity - a.popularity).slice(0, 15);
         
         if(trabajos.length === 0) {
@@ -785,7 +727,18 @@ async function abrirModalPersona(personId, personName) {
 }
 
 
-// --- LÓGICA DE ESTADOS CASCADA ---
+// --- LÓGICA DE ESTADOS CASCADA Y ACTUALIZACIONES ---
+async function actualizarEstadoSeguro(tracking_id, nuevoEstado) {
+    const payload = { status: nuevoEstado, updated_at: new Date().toISOString() };
+    const { error } = await clienteSupabase.from('user_tracking').update(payload).eq('id', tracking_id);
+    
+    // Si la columna updated_at no existe en tu tabla, fallará con el código PGRST204.
+    // En ese caso, hace un fallback inteligente para actualizar solo el estado.
+    if (error && error.code === 'PGRST204') {
+        await clienteSupabase.from('user_tracking').update({ status: nuevoEstado }).eq('id', tracking_id);
+    }
+}
+
 async function procesarSerieCompletaBBDD(tracking_id, tmdb_id) {
     try {
         const res = await fetch(`https://api.themoviedb.org/3/tv/${tmdb_id}?language=es-ES`, { headers: { Authorization: `Bearer ${TMDB_TOKEN}` } });
@@ -826,10 +779,12 @@ async function cambiarEstado(selectElement, tracking_id, tmdb_id, tipo, titulo) 
         }
     }
 
-    await clienteSupabase.from('user_tracking').update({ status: nuevoEstado }).eq('id', tracking_id);
+    await actualizarEstadoSeguro(tracking_id, nuevoEstado);
+    
     const index = miBibliotecaLocal.findIndex(r => r.id === tracking_id);
     if(index > -1) {
         miBibliotecaLocal[index].status = nuevoEstado;
+        miBibliotecaLocal[index].updated_local = new Date().toISOString(); // Para que salte arriba instantáneamente
         if (nuevoEstado === 'pendiente') {
             miBibliotecaLocal[index].user_episodes = [];
             recalcularSiguienteCapitulo(miBibliotecaLocal[index]);
@@ -919,7 +874,7 @@ function evaluarBotonSerieCompleta(tracking_id, tmdb_id, titulo) {
             btnMarcarSerie.textContent = "⌛ Guardando...";
             btnMarcarSerie.disabled = true;
             await procesarSerieCompletaBBDD(tracking_id, tmdb_id);
-            await clienteSupabase.from('user_tracking').update({ status: 'vista' }).eq('id', tracking_id);
+            await actualizarEstadoSeguro(tracking_id, 'vista');
             alert(`¡Has marcado toda la serie "${titulo}" como Vista!`);
             cerrarModal();
             cargarMiLista(); 
@@ -1025,11 +980,12 @@ async function evaluarEstadoSerieDesdeEpisodios(tracking_id, tmdb_id) {
     if (totalVistos >= totalSerieCapitulosGlobal && totalSerieCapitulosGlobal > 0) nuevoEstado = 'vista';
     else if (totalVistos > 0) nuevoEstado = 'viendo';
 
-    await clienteSupabase.from('user_tracking').update({ status: nuevoEstado }).eq('id', tracking_id);
+    await actualizarEstadoSeguro(tracking_id, nuevoEstado);
     
     const idx = miBibliotecaLocal.findIndex(r => r.id === tracking_id);
     if (idx > -1) {
         miBibliotecaLocal[idx].status = nuevoEstado;
+        miBibliotecaLocal[idx].updated_local = new Date().toISOString();
         miBibliotecaLocal[idx].user_episodes = [...vistosTemporal]; 
         recalcularSiguienteCapitulo(miBibliotecaLocal[idx]); 
     }
