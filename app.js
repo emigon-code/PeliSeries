@@ -145,13 +145,11 @@ btnNavSearch.addEventListener('click', () => {
     btnNavSearch.className = 'bg-gray-800/80 px-6 py-2 rounded-full font-bold text-sm text-white transition-all border border-gray-700 shadow';
     btnNavList.className = 'bg-transparent hover:bg-white/5 px-6 py-2 rounded-full font-bold text-sm text-gray-400 transition-all';
     
-    // MEJORA 1: Limpiar el cuadro de búsqueda y los resultados previos
     searchInput.value = '';
     resultsGrid.innerHTML = '';
     pelisYSeries = [];
     searchSortBar.classList.add('hidden');
 
-    // FOCUS AUTOMÁTICO EN EL BUSCADOR
     setTimeout(() => {
         searchInput.focus();
     }, 50);
@@ -633,6 +631,16 @@ function pintarMiLista(dataArray) {
             }
         }
 
+        // ESTILOS DINÁMICOS PARA EL SELECT DE ESTADO
+        let selectClass = "w-full text-xs font-semibold rounded-xl p-2.5 focus:ring-2 focus:ring-indigo-500 border outline-none transition-colors cursor-pointer shadow-inner ";
+        if (registro.status === 'vista') {
+            selectClass += "bg-green-950/50 hover:bg-green-900/60 text-green-400 border-green-800/60";
+        } else if (registro.status === 'viendo') {
+            selectClass += "bg-yellow-950/50 hover:bg-yellow-900/60 text-yellow-400 border-yellow-800/60";
+        } else {
+            selectClass += "bg-gray-900/90 hover:bg-gray-800 text-gray-300 border-gray-700";
+        }
+
         const card = document.createElement('div');
         
         card.className = 'glass-panel rounded-2xl overflow-hidden shadow-xl hover:border-indigo-500/50 hover:shadow-indigo-500/10 transition-all cursor-pointer group flex flex-col relative';
@@ -650,11 +658,10 @@ function pintarMiLista(dataArray) {
                 ${badgeSerie}
                 ${badgeNextEpisode}
                 <div class="mt-auto pt-4" onclick="event.stopPropagation()">
-                    <select onchange="cambiarEstado(this, '${registro.id}', ${item.tmdb_id}, '${item.type}', '${item.title.replace(/'/g, "\\'")}')" 
-                            class="w-full bg-gray-900/90 text-white text-xs font-semibold rounded-xl p-2.5 focus:ring-2 focus:ring-indigo-500 border border-gray-700 outline-none hover:bg-gray-800 transition-colors cursor-pointer shadow-inner">
-                        <option value="pendiente" ${registro.status === 'pendiente' ? 'selected' : ''}>⏳ Pendiente</option>
-                        <option value="viendo" ${registro.status === 'viendo' ? 'selected' : ''}>👀 Viendo</option>
-                        <option value="vista" ${registro.status === 'vista' ? 'selected' : ''}>✅ Vista</option>
+                    <select onchange="cambiarEstado(this, '${registro.id}', ${item.tmdb_id}, '${item.type}', '${item.title.replace(/'/g, "\\'")}')" class="${selectClass}">
+                        <option value="pendiente" ${registro.status === 'pendiente' ? 'selected' : ''} class="bg-gray-900 text-gray-300">⏳ Pendiente</option>
+                        <option value="viendo" ${registro.status === 'viendo' ? 'selected' : ''} class="bg-gray-900 text-gray-300">👀 Viendo</option>
+                        <option value="vista" ${registro.status === 'vista' ? 'selected' : ''} class="bg-gray-900 text-gray-300">✅ Vista</option>
                     </select>
                 </div>
             </div>
