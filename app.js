@@ -2,7 +2,7 @@
 const TMDB_TOKEN = 'eyJhbGciOiJIUzI1NiJ9.eyJhdWQiOiJmNTIyNzVlMDVhNTAxMjllZWYwMGRhN2Q5ZmU5NTZlZSIsIm5iZiI6MTc5MzU1NjUzNC4wMDcsInN1YiI6IjZhZTc4MDM2MWMyNDI4MTQ4MmM4ZGM2NSIsInNjb3BlcyI6WyJhcGlfcmVhZCJdLCJ2ZXJzaW9uIjoxfQ.b2COQUX-mmBdGPcxwCTUN7HI5EN6KNemlZSzbaD5NuI'; 
 const SUPABASE_URL = 'https://dqqfoucxbsvfdshruygt.supabase.co';
 const SUPABASE_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImRxcWZvdWN4YnN2ZmRzaHJ1eWd0Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3OTM1NDgyOTQsImV4cCI6MjEwOTEyNDI5NH0.Z4yVjtuuSrs3Pc5AghHFVeENOvmIeA8k34iWcVQiqIQ';
-const OMDB_TOKEN = 'http://www.omdbapi.com/?i=tt3896198&apikey=23569907'; // Pon aquí tu API Key de OMDb (http://www.omdbapi.com/apikey.aspx)
+const OMDB_TOKEN = '23569907';
 
 const clienteSupabase = window.supabase.createClient(SUPABASE_URL, SUPABASE_KEY);
 
@@ -62,9 +62,9 @@ const detailBadgeType = document.getElementById('detailBadgeType');
 const detailYear = document.getElementById('detailYear');
 const detailCountry = document.getElementById('detailCountry'); 
 const detailRating = document.getElementById('detailRating');
-const detailImdbRating = document.getElementById('detailImdbRating'); // NUEVO OMDB
-const detailRuntime = document.getElementById('detailRuntime'); // NUEVO OMDB/TMDB
-const detailExtraInfo = document.getElementById('detailExtraInfo'); // NUEVO OMDB
+const detailImdbRating = document.getElementById('detailImdbRating'); 
+const detailRuntime = document.getElementById('detailRuntime'); 
+const detailExtraInfo = document.getElementById('detailExtraInfo'); 
 const detailPersonalRating = document.getElementById('detailPersonalRating');
 const miValoracionContenedor = document.getElementById('miValoracionContenedor');
 const detailSeasons = document.getElementById('detailSeasons');
@@ -81,8 +81,7 @@ const btnMarcarSerieDetalle = document.getElementById('btnMarcarSerieDetalle');
 const modalPersona = document.getElementById('modalPersona');
 const btnFilterNovedades = document.getElementById('btnFilterNovedades');
 
-
-// --- AUTENTICACIÓN MULTIUSUARIO ---
+// --- AUTENTICACIÓN ---
 async function iniciarSesion() {
     const email = emailInput.value;
     const password = passInput.value;
@@ -95,16 +94,11 @@ async function crearCuenta() {
     const email = emailInput.value;
     const password = passInput.value;
     if (!email || password.length < 6) return alert('Introduce un correo válido y una contraseña de al menos 6 caracteres.');
-    
     registerBtn.textContent = "Creando cuenta...";
     const { data, error } = await clienteSupabase.auth.signUp({ email, password });
     registerBtn.textContent = "Crear Nueva Cuenta";
-
     if (error) { alert("Error al registrar: " + error.message); } 
-    else { 
-        alert("¡Cuenta creada correctamente! Iniciando sesión automáticamente...");
-        if (data.session) { usuarioActual = data.session.user; postLoginSetup(); }
-    }
+    else { alert("¡Cuenta creada! Iniciando sesión..."); if (data.session) { usuarioActual = data.session.user; postLoginSetup(); } }
 }
 
 async function comprobarSesion() {
@@ -122,62 +116,42 @@ async function postLoginSetup() {
 logoutBtn.addEventListener('click', async () => {
     await clienteSupabase.auth.signOut();
     usuarioActual = null; miListaTMDBIDs = []; miBibliotecaLocal = [];
-    authPanel.classList.remove('hidden'); 
-    userLogged.classList.add('hidden'); 
+    authPanel.classList.remove('hidden'); userLogged.classList.add('hidden'); 
     emailInput.value = ''; passInput.value = '';
-    btnNavList.click(); 
-    resultsGrid.innerHTML = ''; myListGrid.innerHTML = '';
+    btnNavList.click(); resultsGrid.innerHTML = ''; myListGrid.innerHTML = '';
 });
 
 loginBtn.addEventListener('click', iniciarSesion);
 registerBtn.addEventListener('click', crearCuenta);
 comprobarSesion();
 
-
-// --- CERRAR MODALES CON TECLA ESC ---
+// --- ESC ---
 document.addEventListener('keydown', (e) => {
-    if (e.key === 'Escape') {
-        cerrarModalDetalle();
-        cerrarModalImportacion();
-        cerrarModalPersona();
-    }
+    if (e.key === 'Escape') { cerrarModalDetalle(); cerrarModalImportacion(); cerrarModalPersona(); }
 });
-
 
 // --- NAVEGACIÓN ---
 btnNavSearch.addEventListener('click', () => {
-    viewSearch.classList.remove('hidden'); 
-    viewList.classList.add('hidden');
+    viewSearch.classList.remove('hidden'); viewList.classList.add('hidden');
     btnNavSearch.className = 'bg-gray-800/80 px-6 py-2 rounded-full font-bold text-sm text-white transition-all border border-gray-700 shadow';
     btnNavList.className = 'bg-transparent hover:bg-white/5 px-6 py-2 rounded-full font-bold text-sm text-gray-400 transition-all';
-    
-    searchInput.value = '';
-    resultsGrid.innerHTML = '';
-    pelisYSeries = [];
-    searchSortBar.classList.add('hidden');
-
+    searchInput.value = ''; resultsGrid.innerHTML = ''; pelisYSeries = []; searchSortBar.classList.add('hidden');
     setTimeout(() => { searchInput.focus(); }, 50);
 });
 
 btnNavList.addEventListener('click', () => {
-    viewSearch.classList.add('hidden'); 
-    viewList.classList.remove('hidden');
+    viewSearch.classList.add('hidden'); viewList.classList.remove('hidden');
     btnNavList.className = 'bg-gradient-to-r from-indigo-500 to-purple-600 px-6 py-2 rounded-full font-bold text-sm text-white transition-all shadow-md shadow-indigo-500/25';
     btnNavSearch.className = 'bg-transparent hover:bg-white/5 px-6 py-2 rounded-full font-bold text-sm text-gray-400 transition-all';
     cargarMiLista();
 });
 
-
-// --- IMPORTACIÓN / BÚSQUEDA EN BLOQUE ---
+// --- BÚSQUEDA EN BLOQUE ---
 function abrirModalImportacion() {
     if (!usuarioActual) return alert("¡Inicia sesión primero!");
-    modalImport.classList.remove('hidden');
-    importTextarea.value = '';
-    importStatus.classList.add('hidden');
-    btnProcesarImport.disabled = false;
-    btnProcesarImport.classList.remove('opacity-50');
-    btnProcesarImport.onclick = procesarImportacion;
-    btnProcesarImport.textContent = "Comenzar Búsqueda";
+    modalImport.classList.remove('hidden'); importTextarea.value = ''; importStatus.classList.add('hidden');
+    btnProcesarImport.disabled = false; btnProcesarImport.classList.remove('opacity-50');
+    btnProcesarImport.onclick = procesarImportacion; btnProcesarImport.textContent = "Comenzar Búsqueda";
     setTimeout(() => { importTextarea.focus(); }, 50);
 }
 function cerrarModalImportacion() { modalImport.classList.add('hidden'); }
@@ -185,11 +159,7 @@ function cerrarModalImportacion() { modalImport.classList.add('hidden'); }
 async function procesarImportacion() {
     const lineas = importTextarea.value.split('\n').map(l => l.trim()).filter(l => l.length > 0);
     if (lineas.length === 0) return alert("Pega al menos un título.");
-    
-    btnProcesarImport.disabled = true;
-    btnProcesarImport.classList.add('opacity-50');
-    importStatus.classList.remove('hidden');
-    
+    btnProcesarImport.disabled = true; btnProcesarImport.classList.add('opacity-50'); importStatus.classList.remove('hidden');
     let procesados = 0, encontrados = 0;
 
     for (const titulo of lineas) {
@@ -198,36 +168,28 @@ async function procesarImportacion() {
             const res = await fetch(`https://api.themoviedb.org/3/search/multi?query=${encodeURIComponent(titulo)}&language=es-ES&page=1`, { headers: { Authorization: `Bearer ${TMDB_TOKEN}` } });
             const data = await res.json();
             const resultadosValidos = data.results.filter(item => item.media_type === 'movie' || item.media_type === 'tv');
-            
             if (resultadosValidos.length > 0) {
                 const item = resultadosValidos[0]; 
                 if (!miListaTMDBIDs.includes(item.id)) {
                     await clienteSupabase.from('items').insert({ tmdb_id: item.id, title: item.title || item.name, type: item.media_type, poster_path: item.poster_path });
                     const { data: dbItem } = await clienteSupabase.from('items').select('id').eq('tmdb_id', item.id).eq('type', item.media_type).single();
                     await clienteSupabase.from('user_tracking').insert({ user_id: usuarioActual.id, item_id: dbItem.id, status: 'pendiente' });
-                    miListaTMDBIDs.push(item.id);
-                    encontrados++;
+                    miListaTMDBIDs.push(item.id); encontrados++;
                 }
             }
         } catch(e) {}
         procesados++;
     }
     importStatus.textContent = `¡Búsqueda en bloque completada! Se añadieron ${encontrados} títulos a tu lista.`;
-    btnProcesarImport.textContent = "Cerrar y ver mi lista";
-    btnProcesarImport.disabled = false;
-    btnProcesarImport.classList.remove('opacity-50');
+    btnProcesarImport.textContent = "Cerrar y ver mi lista"; btnProcesarImport.disabled = false; btnProcesarImport.classList.remove('opacity-50');
     btnProcesarImport.onclick = () => { cerrarModalImportacion(); btnNavList.click(); };
 }
 
-
-// --- EXPORTACIÓN A EXCEL (.XLSX) ---
+// --- EXCEL ---
 function exportarAExcel() {
     if (!miBibliotecaLocal || miBibliotecaLocal.length === 0) return alert("No hay ningún elemento en tu lista para exportar.");
-
     const datosFormateados = miBibliotecaLocal.map(registro => {
-        const item = registro.items;
-        const details = registro.details || {};
-        
+        const item = registro.items; const details = registro.details || {};
         let progresoCapitulos = 'N/A';
         if (item.type === 'tv') {
             const totalOficial = calcularTotalCapitulosOficiales(details.seasons_data);
@@ -239,64 +201,46 @@ function exportarAExcel() {
         if (registro.status === 'vista') estadoFormateado = 'Vista';
 
         return {
-            'Título': item.title,
-            'Tipo': item.type === 'movie' ? 'Película' : 'Serie',
-            'Estado': estadoFormateado,
+            'Título': item.title, 'Tipo': item.type === 'movie' ? 'Película' : 'Serie', 'Estado': estadoFormateado,
             'Mi Nota': (registro.personal_rating && registro.personal_rating > 0) ? registro.personal_rating : 'Sin nota',
-            'Nota TMDB': details.rating || 'N/A',
-            'Año': details.year || 'N/A',
-            'Capítulos Vistos': progresoCapitulos,
-            'Siguiente Episodio': details.next_episode || 'N/A',
-            'Temporadas': item.type === 'tv' ? (details.seasons_count || 0) : 'N/A',
+            'Nota TMDB': details.rating || 'N/A', 'Año': details.year || 'N/A', 'Capítulos Vistos': progresoCapitulos,
+            'Siguiente Episodio': details.next_episode || 'N/A', 'Temporadas': item.type === 'tv' ? (details.seasons_count || 0) : 'N/A',
             'Estado Emisión': item.type === 'tv' ? (details.is_ended ? 'Finalizada' : 'En emisión') : 'N/A',
-            'Sinopsis': details.overview || '',
-            'TMDB ID': item.tmdb_id
+            'Sinopsis': details.overview || '', 'TMDB ID': item.tmdb_id
         };
     });
-
     const hoja = XLSX.utils.json_to_sheet(datosFormateados);
     hoja['!cols'] = [ {wch: 32}, {wch: 10}, {wch: 12}, {wch: 10}, {wch: 12}, {wch: 8}, {wch: 18}, {wch: 18}, {wch: 12}, {wch: 15}, {wch: 55}, {wch: 10} ];
-    const libro = XLSX.utils.book_new();
-    XLSX.utils.book_append_sheet(libro, hoja, "Mi Lista PeliSeries");
+    const libro = XLSX.utils.book_new(); XLSX.utils.book_append_sheet(libro, hoja, "Mi Lista");
     XLSX.writeFile(libro, `PeliSeries_MiLista_${new Date().toISOString().slice(0, 10)}.xlsx`);
 }
 
-
 // --- UTILIDADES ---
 function formatearFecha(fechaStr) {
-    if (!fechaStr) return '';
-    const partes = fechaStr.split('-');
-    if (partes.length !== 3) return fechaStr;
-    const [yyyy, mm, dd] = partes;
-    return `${dd}/${mm}/${yyyy}`;
+    if (!fechaStr) return ''; const partes = fechaStr.split('-'); if (partes.length !== 3) return fechaStr;
+    return `${partes[2]}/${partes[1]}/${partes[0]}`;
 }
 function obtenerBandera(codigos) {
     if (!codigos || codigos.length === 0 || !codigos[0]) return '';
-    let code = codigos[0];
-    if (typeof code === 'object' && code.iso_3166_1) code = code.iso_3166_1;
+    let code = codigos[0]; if (typeof code === 'object' && code.iso_3166_1) code = code.iso_3166_1;
     if (typeof code !== 'string') return '';
     const flag = code.toUpperCase().replace(/./g, char => String.fromCodePoint(char.charCodeAt(0) + 127397));
     return `${flag} ${code}`;
 }
 
-
-// --- BÚSQUEDA TMDB Y ORDENACIÓN ---
+// --- BUSCADOR ---
 async function buscarEnTMDB(query) {
     const url = `https://api.themoviedb.org/3/search/multi?query=${encodeURIComponent(query)}&language=es-ES&page=1`;
     try {
         const response = await fetch(url, { headers: { Authorization: `Bearer ${TMDB_TOKEN}` } });
-        const data = await response.json();
-        return data.results.filter(item => item.media_type === 'movie' || item.media_type === 'tv');
+        const data = await response.json(); return data.results.filter(item => item.media_type === 'movie' || item.media_type === 'tv');
     } catch (error) { return []; }
 }
-
 async function ejecutarBusqueda() {
     const query = searchInput.value.trim();
     if (query.length > 0) {
         resultsGrid.innerHTML = '<p class="text-indigo-400 col-span-full text-center">Buscando...</p>';
-        pelisYSeries = await buscarEnTMDB(query); 
-        searchSortBar.classList.remove('hidden');
-        renderResults(pelisYSeries);
+        pelisYSeries = await buscarEnTMDB(query); searchSortBar.classList.remove('hidden'); renderResults(pelisYSeries);
     }
 }
 searchBtn.addEventListener('click', ejecutarBusqueda);
@@ -305,8 +249,7 @@ searchInput.addEventListener('keypress', (e) => { if (e.key === 'Enter') ejecuta
 document.querySelectorAll('.search-sort-btn').forEach(btn => {
     btn.addEventListener('click', (e) => {
         document.querySelectorAll('.search-sort-btn').forEach(b => { b.className = `search-sort-btn ${searchPillInactive}`; });
-        e.target.className = `search-sort-btn ${searchPillActive}`;
-        currentSearchSort = e.target.getAttribute('data-search-sort');
+        e.target.className = `search-sort-btn ${searchPillActive}`; currentSearchSort = e.target.getAttribute('data-search-sort');
         renderResults(pelisYSeries);
     });
 });
@@ -316,18 +259,12 @@ function renderResults(resultados) {
     if (resultados.length === 0) return resultsGrid.innerHTML = '<p class="text-gray-400 col-span-full text-center">Sin resultados.</p>';
 
     const ordenados = [...resultados].sort((a, b) => {
-        if (currentSearchSort === 'title') {
-            const tA = a.title || a.name || '';
-            const tB = b.title || b.name || '';
-            return tA.localeCompare(tB);
-        } else {
-            return (b.vote_average || 0) - (a.vote_average || 0);
-        }
+        if (currentSearchSort === 'title') { return (a.title || a.name || '').localeCompare(b.title || b.name || ''); } 
+        else { return (b.vote_average || 0) - (a.vote_average || 0); }
     });
 
     ordenados.forEach(item => {
-        const titulo = item.title || item.name;
-        const tipo = item.media_type === 'movie' ? 'Película' : 'Serie';
+        const titulo = item.title || item.name; const tipo = item.media_type === 'movie' ? 'Película' : 'Serie';
         const imgUrl = item.poster_path ? `https://image.tmdb.org/t/p/w500${item.poster_path}` : 'https://via.placeholder.com/500x750/1f2937/ffffff?text=Sin+Poster';
         const rating = item.vote_average ? item.vote_average.toFixed(1) : 'N/A';
         const rawYear = (item.release_date || item.first_air_date || '').substring(0, 4);
@@ -357,94 +294,67 @@ function renderResults(resultados) {
     });
 }
 
-
-// --- GESTIÓN VISUAL DEL CENTRO DE CONTROL DE MI LISTA ---
+// --- FILTROS DE LISTA ---
 function updateBtnClassesSingle(selector, activeValue, dataAttr) {
     const baseClass = selector.replace('.', '');
-    document.querySelectorAll(selector).forEach(btn => {
-        if(btn.getAttribute(dataAttr) === activeValue) btn.className = `${baseClass} ${btnPillActive}`;
-        else btn.className = `${baseClass} ${btnPillInactive}`;
-    });
+    document.querySelectorAll(selector).forEach(btn => { btn.className = btn.getAttribute(dataAttr) === activeValue ? `${baseClass} ${btnPillActive}` : `${baseClass} ${btnPillInactive}`; });
 }
 function updateBtnClassesMulti(selector, activeArray, dataAttr) {
     const baseClass = selector.replace('.', '');
-    document.querySelectorAll(selector).forEach(btn => {
-        const val = btn.getAttribute(dataAttr);
-        if(activeArray.includes(val)) btn.className = `${baseClass} ${btnPillActive}`;
-        else btn.className = `${baseClass} ${btnPillInactive}`;
-    });
+    document.querySelectorAll(selector).forEach(btn => { btn.className = activeArray.includes(btn.getAttribute(dataAttr)) ? `${baseClass} ${btnPillActive}` : `${baseClass} ${btnPillInactive}`; });
 }
 
 localSearchInput.addEventListener('input', (e) => { localSearchQuery = e.target.value.toLowerCase().trim(); aplicarFiltrosYDiseño(); });
 document.querySelectorAll('.filter-type-btn').forEach(btn => {
     btn.addEventListener('click', (e) => {
-        const selectedType = e.currentTarget.getAttribute('data-filter-type');
-        if (filterTypes.includes(selectedType)) {
-            if (filterTypes.length > 1) filterTypes = filterTypes.filter(t => t !== selectedType);
-        } else { filterTypes.push(selectedType); }
-        updateBtnClassesMulti('.filter-type-btn', filterTypes, 'data-filter-type');
-        aplicarFiltrosYDiseño();
+        const sel = e.currentTarget.getAttribute('data-filter-type');
+        if (filterTypes.includes(sel)) { if (filterTypes.length > 1) filterTypes = filterTypes.filter(t => t !== sel); } else { filterTypes.push(sel); }
+        updateBtnClassesMulti('.filter-type-btn', filterTypes, 'data-filter-type'); aplicarFiltrosYDiseño();
     });
 });
 document.querySelectorAll('.filter-status-btn').forEach(btn => {
     btn.addEventListener('click', (e) => {
         currentFilterStatus = e.currentTarget.getAttribute('data-filter-status');
-        updateBtnClassesSingle('.filter-status-btn', currentFilterStatus, 'data-filter-status');
-        aplicarFiltrosYDiseño();
+        updateBtnClassesSingle('.filter-status-btn', currentFilterStatus, 'data-filter-status'); aplicarFiltrosYDiseño();
     });
 });
-const btnFilterRating = document.getElementById('btnFilterRating');
-btnFilterRating.addEventListener('click', () => {
-    filterRating8Plus = !filterRating8Plus;
-    btnFilterRating.className = filterRating8Plus ? btnPillActive : btnPillInactive;
-    aplicarFiltrosYDiseño();
+document.getElementById('btnFilterRating').addEventListener('click', (e) => {
+    filterRating8Plus = !filterRating8Plus; e.currentTarget.className = filterRating8Plus ? btnPillActive : btnPillInactive; aplicarFiltrosYDiseño();
 });
-const btnFilterMyRating = document.getElementById('btnFilterMyRating');
-btnFilterMyRating.addEventListener('click', () => {
-    filterMyRating8Plus = !filterMyRating8Plus;
-    btnFilterMyRating.className = filterMyRating8Plus ? btnPillActive : btnPillInactive;
-    aplicarFiltrosYDiseño();
+document.getElementById('btnFilterMyRating').addEventListener('click', (e) => {
+    filterMyRating8Plus = !filterMyRating8Plus; e.currentTarget.className = filterMyRating8Plus ? btnPillActive : btnPillInactive; aplicarFiltrosYDiseño();
 });
 btnFilterNovedades.addEventListener('click', () => { filterNovedades = !filterNovedades; aplicarFiltrosYDiseño(); });
 document.querySelectorAll('.sort-btn').forEach(btn => {
     btn.addEventListener('click', (e) => {
         currentSort = e.currentTarget.getAttribute('data-sort');
-        updateBtnClassesSingle('.sort-btn', currentSort, 'data-sort');
-        aplicarFiltrosYDiseño();
+        updateBtnClassesSingle('.sort-btn', currentSort, 'data-sort'); aplicarFiltrosYDiseño();
     });
 });
 
 
-// --- BASE DE DATOS SUPABASE ---
+// --- GESTIÓN SUPABASE ---
 async function actualizarIdsLocales() {
     const { data } = await clienteSupabase.from('user_tracking').select('items(tmdb_id)').eq('user_id', usuarioActual.id);
     if (data) miListaTMDBIDs = data.map(d => d.items.tmdb_id);
 }
-
 async function añadirALista(tmdb_id) {
     if (!usuarioActual) return alert("¡Inicia sesión primero!");
     const item = pelisYSeries.find(i => i.id === tmdb_id);
-    const titulo = item.title || item.name;
-
-    await clienteSupabase.from('items').insert({ tmdb_id: item.id, title: titulo, type: item.media_type, poster_path: item.poster_path });
+    await clienteSupabase.from('items').insert({ tmdb_id: item.id, title: item.title || item.name, type: item.media_type, poster_path: item.poster_path });
     const { data: dbItem } = await clienteSupabase.from('items').select('id').eq('tmdb_id', item.id).eq('type', item.media_type).single();
     await clienteSupabase.from('user_tracking').insert({ user_id: usuarioActual.id, item_id: dbItem.id, status: 'pendiente' });
-
-    miListaTMDBIDs.push(item.id); 
-    renderResults(pelisYSeries);  
+    miListaTMDBIDs.push(item.id); renderResults(pelisYSeries);  
 }
-
 async function borrarDeMiLista(tracking_id, tmdb_id, titulo) {
-    if (confirm(`¿Eliminar "${titulo}" de tu biblioteca personal?`)) {
+    if (confirm(`¿Eliminar "${titulo}" de tu lista?`)) {
         await clienteSupabase.from('user_tracking').delete().eq('id', tracking_id);
         miListaTMDBIDs = miListaTMDBIDs.filter(id => id !== tmdb_id);
-        cerrarModalDetalle();
-        cargarMiLista(); 
+        cerrarModalDetalle(); cargarMiLista(); 
     }
 }
 
-
-// --- PESTAÑA MI LISTA CON DETALLES ---
+// --- MI LISTA ---
 function calcularTotalCapitulosOficiales(seasonsData) {
     if (!seasonsData) return 0;
     return seasonsData.filter(s => s.season_number > 0).reduce((acc, s) => acc + s.episode_count, 0);
@@ -474,7 +384,6 @@ async function cargarMiLista() {
         .eq('user_id', usuarioActual.id);
 
     if (error || data.length === 0) { miBibliotecaLocal = []; return myListGrid.innerHTML = '<p class="text-gray-400 col-span-full text-center py-8">Aún no has guardado elementos.</p>'; }
-
     myListGrid.innerHTML = '<p class="text-indigo-400 col-span-full text-center py-8 animate-pulse">Obteniendo detalles actualizados...</p>';
     
     miBibliotecaLocal = await Promise.all(data.map(async (registro) => {
@@ -534,22 +443,18 @@ function aplicarFiltrosYDiseño() {
             if (a.has_new_episodes && !b.has_new_episodes) return -1;
             if (!a.has_new_episodes && b.has_new_episodes) return 1;
             return new Date(b.updated_at || b.created_at || b.updated_local || 0).getTime() - new Date(a.updated_at || a.created_at || a.updated_local || 0).getTime();
-        } else if (currentSort === 'title') {
-            return a.items.title.localeCompare(b.items.title);
-        } else {
-            return (parseFloat(b.details.rating) || 0) - (parseFloat(a.details.rating) || 0); 
-        }
+        } else if (currentSort === 'title') { return a.items.title.localeCompare(b.items.title);
+        } else { return (parseFloat(b.details.rating) || 0) - (parseFloat(a.details.rating) || 0); }
     });
     pintarMiLista(dataFiltrada);
 }
 
 function pintarMiLista(dataArray) {
     myListGrid.innerHTML = '';
-    if (dataArray.length === 0) return myListGrid.innerHTML = '<p class="text-gray-400 col-span-full text-center py-8">No hay resultados que coincidan con la búsqueda o los filtros.</p>';
+    if (dataArray.length === 0) return myListGrid.innerHTML = '<p class="text-gray-400 col-span-full text-center py-8">No hay resultados.</p>';
 
     dataArray.forEach(registro => {
-        const item = registro.items; 
-        const details = registro.details;
+        const item = registro.items; const details = registro.details;
         const imgUrl = item.poster_path ? `https://image.tmdb.org/t/p/w500${item.poster_path}` : 'https://via.placeholder.com/500x750/1f2937/ffffff?text=Sin+Poster';
         
         let badgeSerie = ''; let badgeNextEpisode = '';
@@ -560,9 +465,7 @@ function pintarMiLista(dataArray) {
         if (item.type === 'tv') {
             const estadoTexto = details.is_ended ? '🔴 Fin' : '🟢 Emisión';
             badgeSerie = `<span class="text-[10px] text-gray-400 font-medium block mt-1 tracking-wide">${details.seasons_count} Temp. • ${estadoTexto}</span>`;
-            if (details.next_episode) {
-                badgeNextEpisode = `<div class="mt-1.5"><span class="inline-block text-[9px] sm:text-[10px] font-bold bg-indigo-950/80 text-indigo-300 px-2.5 py-0.5 rounded-lg border border-indigo-700/50 shadow-sm">▶ Siguiente: ${details.next_episode}</span></div>`;
-            }
+            if (details.next_episode) badgeNextEpisode = `<div class="mt-1.5"><span class="inline-block text-[9px] sm:text-[10px] font-bold bg-indigo-950/80 text-indigo-300 px-2.5 py-0.5 rounded-lg border border-indigo-700/50 shadow-sm">▶ Siguiente: ${details.next_episode}</span></div>`;
         }
 
         let selectClass = "w-full text-xs font-semibold rounded-xl p-2.5 focus:ring-2 focus:ring-indigo-500 border outline-none transition-colors cursor-pointer shadow-inner ";
@@ -606,82 +509,65 @@ function pintarMiLista(dataArray) {
 }
 
 
-// --- MODAL DE DETALLE Y EXTRACCIÓN AVANZADA (OMDb + TMDB) ---
+// --- DETALLES Y EXTRACCIÓN AVANZADA (OMDb + TMDB) ---
 function cerrarModalDetalle() { 
-    modalDetalle.classList.add('hidden'); 
-    currentDetailTrackingId = null; 
-    detailSeasonsWrapper.classList.add('hidden');
-    detailSeasonsContent.innerHTML = '';
+    modalDetalle.classList.add('hidden'); currentDetailTrackingId = null; 
+    detailSeasonsWrapper.classList.add('hidden'); detailSeasonsContent.innerHTML = '';
 }
 
 async function cargarDatosAvanzados(tmdb_id, tipo) {
-    // Resetear UI
-    detailCountry.textContent = '';
-    detailRuntime.classList.add('hidden');
-    detailImdbRating.classList.add('hidden');
-    detailExtraInfo.classList.add('hidden');
-    detailExtraInfo.innerHTML = '';
+    detailCountry.textContent = ''; detailRuntime.classList.add('hidden'); detailImdbRating.classList.add('hidden');
+    detailExtraInfo.classList.add('hidden'); detailExtraInfo.innerHTML = '';
 
     try {
-        // Hacemos un fetch completo a TMDB pidiendo además los external_ids (para sacar el de IMDb)
         const endpoint = tipo === 'movie' ? `movie/${tmdb_id}` : `tv/${tmdb_id}`;
         const res = await fetch(`https://api.themoviedb.org/3/${endpoint}?language=es-ES&append_to_response=external_ids`, { headers: { Authorization: `Bearer ${TMDB_TOKEN}` } });
         const dataFull = await res.json();
 
-        // 1. Duración TMDB (fallback)
-        let duracion = dataFull.runtime || (dataFull.episode_run_time && dataFull.episode_run_time[0]);
+        // Extraer Duración de TMDB
+        let duracion = dataFull.runtime;
+        if (!duracion && dataFull.episode_run_time && dataFull.episode_run_time.length > 0) duracion = dataFull.episode_run_time[0];
 
-        // 2. País TMDB
+        // País
         const codigosPais = dataFull.origin_country || (dataFull.production_countries ? dataFull.production_countries.map(c=>c.iso_3166_1) : []);
         detailCountry.textContent = obtenerBandera(codigosPais);
 
-        // 3. Consultar OMDb (si tenemos el ID de IMDb y la clave)
+        // OMDb
         let imdbId = dataFull.imdb_id || (dataFull.external_ids && dataFull.external_ids.imdb_id);
         
-        if (imdbId && OMDB_TOKEN && OMDB_TOKEN !== 'TU_CLAVE_OMDB') {
-            const omdbRes = await fetch(`https://www.omdbapi.com/?i=${imdbId}&apikey=${OMDB_TOKEN}&lang=es`);
-            const omdbData = await omdbRes.json();
+        if (imdbId && OMDB_TOKEN && OMDB_TOKEN.trim() !== 'TU_CLAVE_OMDB' && OMDB_TOKEN.trim() !== '') {
+            try {
+                const omdbRes = await fetch(`https://www.omdbapi.com/?i=${imdbId}&apikey=${OMDB_TOKEN.trim()}&lang=es`);
+                const omdbData = await omdbRes.json();
 
-            if (omdbData.Response === "True") {
-                // Nota IMDb
-                if (omdbData.imdbRating && omdbData.imdbRating !== 'N/A') {
-                    detailImdbRating.textContent = `🎬 IMDb: ${omdbData.imdbRating}`;
-                    detailImdbRating.classList.remove('hidden');
+                if (omdbData.Response === "True") {
+                    if (omdbData.imdbRating && omdbData.imdbRating !== 'N/A') {
+                        detailImdbRating.innerHTML = `🎬 IMDb: <span class="text-white">${omdbData.imdbRating}</span>`;
+                        detailImdbRating.classList.remove('hidden');
+                    }
+                    if (!duracion && omdbData.Runtime && omdbData.Runtime !== 'N/A') duracion = parseInt(omdbData.Runtime);
+                    
+                    let htmlExtra = '';
+                    if (omdbData.Awards && omdbData.Awards !== 'N/A') htmlExtra += `<p class="mb-1.5"><span class="font-bold text-gray-400 uppercase tracking-wide">🏆 Premios:</span> <span class="text-gray-200 ml-1">${omdbData.Awards}</span></p>`;
+                    if (omdbData.BoxOffice && omdbData.BoxOffice !== 'N/A') htmlExtra += `<p class="mb-1.5"><span class="font-bold text-gray-400 uppercase tracking-wide">💰 Recaudación:</span> <span class="text-gray-200 ml-1">${omdbData.BoxOffice}</span></p>`;
+                    if (omdbData.Writer && omdbData.Writer !== 'N/A') htmlExtra += `<p class="mb-1.5"><span class="font-bold text-gray-400 uppercase tracking-wide">✍️ Guion:</span> <span class="text-gray-200 ml-1">${omdbData.Writer}</span></p>`;
+                    
+                    if (htmlExtra !== '') { detailExtraInfo.innerHTML = htmlExtra; detailExtraInfo.classList.remove('hidden'); }
                 }
-                
-                // Si TMDB no tenía duración, probar si OMDb la tiene
-                if (!duracion && omdbData.Runtime && omdbData.Runtime !== 'N/A') {
-                    duracion = parseInt(omdbData.Runtime);
-                }
-
-                // Datos Extra de OMDb (Premios, Recaudación, Guion)
-                let htmlExtra = '';
-                if (omdbData.Awards && omdbData.Awards !== 'N/A') htmlExtra += `<p class="mb-1.5"><span class="font-bold text-gray-300">🏆 Premios:</span> ${omdbData.Awards}</p>`;
-                if (omdbData.BoxOffice && omdbData.BoxOffice !== 'N/A') htmlExtra += `<p class="mb-1.5"><span class="font-bold text-gray-300">💰 Recaudación:</span> ${omdbData.BoxOffice}</p>`;
-                if (omdbData.Writer && omdbData.Writer !== 'N/A') htmlExtra += `<p class="mb-1.5"><span class="font-bold text-gray-300">✍️ Guion:</span> ${omdbData.Writer}</p>`;
-                
-                if (htmlExtra !== '') {
-                    detailExtraInfo.innerHTML = htmlExtra;
-                    detailExtraInfo.classList.remove('hidden');
-                }
-            }
+            } catch(e) { console.error("Fallo al conectar con OMDb"); }
         }
 
-        // Pintar duración final (sea de TMDB o de OMDb)
-        if (duracion) {
+        // Pintar duración final
+        if (duracion && duracion > 0) {
             detailRuntime.textContent = `⏳ ${duracion} min`;
             detailRuntime.classList.remove('hidden');
         }
 
-        // Mostrar temporadas si es serie (para actualizar estado de finalizada/emisión)
         if (tipo === 'tv') {
-            detailSeasons.textContent = `${dataFull.number_of_seasons} Temporadas`;
-            detailSeasons.classList.remove('hidden');
-            detailStatus.textContent = (dataFull.status === 'Ended' || dataFull.status === 'Canceled') ? '🔴 Finalizada' : '🟢 En emisión';
-            detailStatus.classList.remove('hidden');
+            detailSeasons.textContent = `${dataFull.number_of_seasons} Temporadas`; detailSeasons.classList.remove('hidden');
+            detailStatus.textContent = (dataFull.status === 'Ended' || dataFull.status === 'Canceled') ? '🔴 Finalizada' : '🟢 En emisión'; detailStatus.classList.remove('hidden');
         }
-
-    } catch(e) { console.error('Error al cargar datos avanzados', e); }
+    } catch(e) { console.error('Error general al cargar datos de detalle', e); }
 }
 
 async function cargarCreditos(tmdb_id, tipo) {
@@ -689,7 +575,6 @@ async function cargarCreditos(tmdb_id, tipo) {
     try {
         const res = await fetch(`https://api.themoviedb.org/3/${tipo}/${tmdb_id}/credits?language=es-ES`, { headers: { Authorization: `Bearer ${TMDB_TOKEN}` } });
         const data = await res.json();
-        
         const director = data.crew.find(c => c.job === 'Director') || data.crew.find(c => c.department === 'Directing');
         const musico = data.crew.find(c => c.job === 'Original Music Composer' || c.job === 'Music');
         const reparto = data.cast.slice(0, 6);
@@ -697,30 +582,23 @@ async function cargarCreditos(tmdb_id, tipo) {
         let html = '';
         if (director) html += crearPillPersona('🎬 Dirección', director);
         if (musico) html += crearPillPersona('🎵 Música', musico);
-        
         if (reparto.length > 0) {
             html += `<div class="flex flex-wrap items-center gap-2 mt-1"><span class="text-[10px] font-black text-gray-400 uppercase tracking-widest mr-1">🎭 Reparto:</span>`;
-            reparto.forEach(actor => { html += generarBotonPersona(actor); });
-            html += `</div>`;
+            reparto.forEach(actor => { html += generarBotonPersona(actor); }); html += `</div>`;
         }
-        if (html === '') html = '<span class="text-xs text-gray-500">Sin datos técnicos registrados.</span>';
+        if (html === '') html = '<span class="text-xs text-gray-500">Sin datos.</span>';
         detailCredits.innerHTML = html;
     } catch(e) { detailCredits.innerHTML = ''; }
 }
 
-function crearPillPersona(rol, persona) {
-    return `<div class="flex items-center gap-2 mb-1"><span class="text-[10px] font-black text-gray-400 uppercase tracking-widest">${rol}:</span>${generarBotonPersona(persona)}</div>`;
-}
-function generarBotonPersona(persona) {
-    return `<button onclick="abrirModalPersona(${persona.id}, '${persona.name.replace(/'/g, "\\'")}')" class="bg-gray-800/80 hover:bg-indigo-600 text-gray-300 hover:text-white px-2.5 py-1 rounded-lg text-xs font-semibold border border-gray-600/50 transition-colors shadow-sm flex items-center gap-1.5"><span class="text-indigo-400">👤</span> ${persona.name}</button>`;
-}
+function crearPillPersona(rol, persona) { return `<div class="flex items-center gap-2 mb-1"><span class="text-[10px] font-black text-gray-400 uppercase tracking-widest">${rol}:</span>${generarBotonPersona(persona)}</div>`; }
+function generarBotonPersona(persona) { return `<button onclick="abrirModalPersona(${persona.id}, '${persona.name.replace(/'/g, "\\'")}')" class="bg-gray-800/80 hover:bg-indigo-600 text-gray-300 hover:text-white px-2.5 py-1 rounded-lg text-xs font-semibold border border-gray-600/50 transition-colors shadow-sm flex items-center gap-1.5"><span class="text-indigo-400">👤</span> ${persona.name}</button>`; }
 
 async function abrirModalDetalleDirecto(tmdb_id, tipo) {
     cerrarModalDetalle();
     try {
         const res = await fetch(`https://api.themoviedb.org/3/${tipo}/${tmdb_id}?language=es-ES`, { headers: { Authorization: `Bearer ${TMDB_TOKEN}` } });
-        const item = await res.json();
-        item.media_type = tipo; 
+        const item = await res.json(); item.media_type = tipo; 
         if (!pelisYSeries.find(i => i.id === tmdb_id)) pelisYSeries.push(item);
         abrirModalDetalleDesdeBusqueda(tmdb_id);
     } catch(e) { }
@@ -731,7 +609,7 @@ async function cargarRecomendaciones(tmdb_id, tipo) {
     try {
         const res = await fetch(`https://api.themoviedb.org/3/${tipo}/${tmdb_id}/recommendations?language=es-ES&page=1`, { headers: { Authorization: `Bearer ${TMDB_TOKEN}` } });
         const data = await res.json();
-        if (data.results.length === 0) { detailRecommendations.innerHTML = '<p class="text-xs text-gray-500">No hay recomendaciones disponibles.</p>'; return; }
+        if (data.results.length === 0) { detailRecommendations.innerHTML = '<p class="text-xs text-gray-500">No hay recomendaciones.</p>'; return; }
         detailRecommendations.innerHTML = '';
         data.results.slice(0, 10).forEach(rec => {
             const img = rec.poster_path ? `https://image.tmdb.org/t/p/w200${rec.poster_path}` : 'https://via.placeholder.com/200x300/1f2937/ffffff?text=X';
@@ -751,11 +629,8 @@ async function cargarRecomendaciones(tmdb_id, tipo) {
 }
 
 async function abrirModalDetalleDesdeBusqueda(tmdb_id) {
-    const item = pelisYSeries.find(i => i.id === tmdb_id);
-    if (!item) return;
-
-    modalDetalle.classList.remove('hidden');
-    miValoracionContenedor.classList.add('hidden'); 
+    const item = pelisYSeries.find(i => i.id === tmdb_id); if (!item) return;
+    modalDetalle.classList.remove('hidden'); miValoracionContenedor.classList.add('hidden'); 
     
     detailTitle.textContent = item.title || item.name;
     detailBadgeType.textContent = item.media_type === 'movie' ? 'Película' : 'Serie';
@@ -763,11 +638,8 @@ async function abrirModalDetalleDesdeBusqueda(tmdb_id) {
     detailPoster.src = item.poster_path ? `https://image.tmdb.org/t/p/w500${item.poster_path}` : 'https://via.placeholder.com/500x750/1f2937/ffffff?text=Sin+Poster';
     detailRating.textContent = `⭐ ${item.vote_average ? item.vote_average.toFixed(1) : 'N/A'}`;
     detailOverview.textContent = item.overview || 'Sin descripción disponible en español.';
-    
-    detailSeasons.classList.add('hidden');
-    detailStatus.classList.add('hidden');
+    detailSeasons.classList.add('hidden'); detailStatus.classList.add('hidden');
 
-    // Llama a OMDb y recarga país, duración, etc.
     cargarDatosAvanzados(tmdb_id, item.media_type);
 
     const yaLaTengo = miListaTMDBIDs.includes(item.id);
@@ -775,25 +647,16 @@ async function abrirModalDetalleDesdeBusqueda(tmdb_id) {
         ? `<button disabled class="w-full bg-green-950/60 text-green-400 py-3 rounded-xl text-sm font-bold border border-green-800">✓ Ya está en tu biblioteca</button>`
         : `<button onclick="añadirALista(${item.id}); cerrarModalDetalle();" class="w-full bg-gradient-to-r from-indigo-500 to-purple-600 hover:from-indigo-400 hover:to-purple-500 text-white py-3 rounded-xl text-sm font-bold transition-colors shadow">+ Añadir a mi lista</button>`;
 
-    cargarCreditos(tmdb_id, item.media_type);
-    cargarRecomendaciones(tmdb_id, item.media_type);
-
+    cargarCreditos(tmdb_id, item.media_type); cargarRecomendaciones(tmdb_id, item.media_type);
     if (item.media_type === 'tv') renderizarTemporadas(tmdb_id, null, item.title || item.name);
 }
 
 function abrirModalDetalleDesdeLista(tracking_id) {
-    const registro = miBibliotecaLocal.find(r => r.id === tracking_id);
-    if (!registro) return;
+    const registro = miBibliotecaLocal.find(r => r.id === tracking_id); if (!registro) return;
+    currentDetailTrackingId = tracking_id; const item = registro.items; const details = registro.details;
 
-    currentDetailTrackingId = tracking_id;
-    const item = registro.items;
-    const details = registro.details;
-
-    modalDetalle.classList.remove('hidden');
-    miValoracionContenedor.classList.remove('hidden');
-    miValoracionContenedor.classList.add('flex');
+    modalDetalle.classList.remove('hidden'); miValoracionContenedor.classList.remove('hidden'); miValoracionContenedor.classList.add('flex');
     detailPersonalRating.value = registro.personal_rating || '0';
-
     detailTitle.textContent = item.title;
     detailBadgeType.textContent = item.type === 'movie' ? 'Película' : 'Serie';
     detailYear.textContent = details.year;
@@ -801,14 +664,11 @@ function abrirModalDetalleDesdeLista(tracking_id) {
     detailRating.textContent = `⭐ ${details.rating}`;
     detailOverview.textContent = details.overview;
 
-    // Llama a OMDb y recarga país, duración, etc.
     cargarDatosAvanzados(item.tmdb_id, item.type);
 
     detailActions.innerHTML = `<button onclick="borrarDeMiLista('${registro.id}', ${item.tmdb_id}, '${item.title.replace(/'/g, "\\'")}')" class="w-full bg-red-950/60 hover:bg-red-600 text-red-400 hover:text-white border border-red-800/60 px-5 py-3 rounded-xl text-sm font-bold transition-colors flex items-center justify-center gap-2">🗑️ Eliminar de mi lista</button>`;
 
-    cargarCreditos(item.tmdb_id, item.type);
-    cargarRecomendaciones(item.tmdb_id, item.type);
-
+    cargarCreditos(item.tmdb_id, item.type); cargarRecomendaciones(item.tmdb_id, item.type);
     if (item.type === 'tv') renderizarTemporadas(item.tmdb_id, registro.id, item.title);
 }
 
@@ -816,50 +676,37 @@ async function cambiarNotaPersonal(valor) {
     if (!currentDetailTrackingId) return;
     const nuevaNota = parseInt(valor) || 0;
     await clienteSupabase.from('user_tracking').update({ personal_rating: nuevaNota }).eq('id', currentDetailTrackingId);
-    
     const index = miBibliotecaLocal.findIndex(r => r.id === currentDetailTrackingId);
     if(index > -1) miBibliotecaLocal[index].personal_rating = nuevaNota;
     aplicarFiltrosYDiseño(); 
 }
 
-
-// --- MODAL FILMOGRAFÍA PERSONA ---
+// --- PERSONAS ---
 const cerrarModalPersona = () => { modalPersona.classList.add('hidden'); }
-
 async function abrirModalPersona(personId, personName) {
-    modalPersona.classList.remove('hidden');
-    document.getElementById('personaName').innerHTML = `<span class="text-indigo-400 text-2xl">👤</span> ${personName}`;
-    const grid = document.getElementById('personaWorks');
-    grid.innerHTML = '<p class="text-indigo-400 text-sm p-4">Cargando filmografía destacada...</p>';
-
+    modalPersona.classList.remove('hidden'); document.getElementById('personaName').innerHTML = `<span class="text-indigo-400 text-2xl">👤</span> ${personName}`;
+    const grid = document.getElementById('personaWorks'); grid.innerHTML = '<p class="text-indigo-400 text-sm p-4">Cargando filmografía destacada...</p>';
     try {
         const res = await fetch(`https://api.themoviedb.org/3/person/${personId}/combined_credits?language=es-ES`, { headers: { Authorization: `Bearer ${TMDB_TOKEN}` } });
-        const data = await res.json();
-        const trabajos = data.cast.sort((a,b) => b.popularity - a.popularity).slice(0, 15);
-        
+        const data = await res.json(); const trabajos = data.cast.sort((a,b) => b.popularity - a.popularity).slice(0, 15);
         if(trabajos.length === 0) { grid.innerHTML = '<p class="text-gray-500 text-sm p-4">No hay trabajos registrados.</p>'; return; }
-
         grid.innerHTML = '';
         trabajos.forEach(w => {
             const img = w.poster_path ? `https://image.tmdb.org/t/p/w200${w.poster_path}` : 'https://via.placeholder.com/200x300/1f2937/ffffff?text=X';
-            const title = w.title || w.name;
-            const tipo = w.media_type;
-            
             grid.innerHTML += `
-                <div class="flex-shrink-0 w-28 cursor-pointer group" onclick="cerrarModalPersona(); abrirModalDetalleDirecto(${w.id}, '${tipo}')">
+                <div class="flex-shrink-0 w-28 cursor-pointer group" onclick="cerrarModalPersona(); abrirModalDetalleDirecto(${w.id}, '${w.media_type}')">
                     <div class="relative">
                         <img src="${img}" class="w-full h-40 object-cover rounded-xl shadow-md border border-transparent group-hover:border-indigo-500 transition-all">
-                        <span class="absolute top-1 right-1 bg-black/80 backdrop-blur-md text-gray-300 text-[9px] font-bold px-1.5 py-0.5 rounded shadow-md border border-gray-600/50">${tipo === 'movie' ? '🍿' : '📺'}</span>
+                        <span class="absolute top-1 right-1 bg-black/80 backdrop-blur-md text-gray-300 text-[9px] font-bold px-1.5 py-0.5 rounded shadow-md border border-gray-600/50">${w.media_type === 'movie' ? '🍿' : '📺'}</span>
                     </div>
-                    <p class="text-xs font-semibold text-gray-300 mt-2 line-clamp-2 group-hover:text-indigo-400 leading-tight">${title}</p>
+                    <p class="text-xs font-semibold text-gray-300 mt-2 line-clamp-2 group-hover:text-indigo-400 leading-tight">${w.title || w.name}</p>
                 </div>
             `;
         });
     } catch(e) { grid.innerHTML = '<p class="text-red-400 p-4">Error al cargar trabajos.</p>'; }
 }
 
-
-// --- LÓGICA DE ESTADOS CASCADA ---
+// --- ESTADOS Y TEMPORADAS ---
 async function actualizarEstadoSeguro(tracking_id, nuevoEstado) {
     const payload = { status: nuevoEstado, updated_at: new Date().toISOString() };
     const { error } = await clienteSupabase.from('user_tracking').update(payload).eq('id', tracking_id);
@@ -881,45 +728,31 @@ async function procesarSerieCompletaBBDD(tracking_id, tmdb_id) {
 }
 
 async function cambiarEstado(selectElement, tracking_id, tmdb_id, tipo, titulo) {
-    const nuevoEstado = selectElement.value;
-    selectElement.disabled = true;
-
+    const nuevoEstado = selectElement.value; selectElement.disabled = true;
     if (tipo === 'tv') {
         if (nuevoEstado === 'vista') { await procesarSerieCompletaBBDD(tracking_id, tmdb_id); await cargarMiLista(); return; } 
         else if (nuevoEstado === 'pendiente') { await clienteSupabase.from('user_episodes').delete().eq('tracking_id', tracking_id); }
     }
-
     await actualizarEstadoSeguro(tracking_id, nuevoEstado);
     const index = miBibliotecaLocal.findIndex(r => r.id === tracking_id);
     if(index > -1) {
-        miBibliotecaLocal[index].status = nuevoEstado;
-        miBibliotecaLocal[index].updated_local = new Date().toISOString(); 
+        miBibliotecaLocal[index].status = nuevoEstado; miBibliotecaLocal[index].updated_local = new Date().toISOString(); 
         miBibliotecaLocal[index].has_new_episodes = false; 
         if (nuevoEstado === 'pendiente') { miBibliotecaLocal[index].user_episodes = []; recalcularSiguienteCapitulo(miBibliotecaLocal[index]); }
     }
-    
-    selectElement.disabled = false;
-    aplicarFiltrosYDiseño();
+    selectElement.disabled = false; aplicarFiltrosYDiseño();
 }
 
-
-// --- TEMPORADAS Y EPISODIOS INTEGRADOS ---
 async function renderizarTemporadas(tmdb_id, tracking_id, titulo) {
-    detailSeasonsWrapper.classList.remove('hidden');
-    detailSeasonsContent.innerHTML = '<p class="text-indigo-400 text-xs py-4 text-center">Cargando episodios...</p>';
-
+    detailSeasonsWrapper.classList.remove('hidden'); detailSeasonsContent.innerHTML = '<p class="text-indigo-400 text-xs py-4 text-center">Cargando episodios...</p>';
     try {
         const resTMDB = await fetch(`https://api.themoviedb.org/3/tv/${tmdb_id}?language=es-ES`, { headers: { Authorization: `Bearer ${TMDB_TOKEN}` } });
         const serieData = await resTMDB.json();
-
-        totalSerieCapitulosGlobal = 0;
-        serieData.seasons.filter(t => t.season_number > 0).forEach(t => totalSerieCapitulosGlobal += t.episode_count);
+        totalSerieCapitulosGlobal = 0; serieData.seasons.filter(t => t.season_number > 0).forEach(t => totalSerieCapitulosGlobal += t.episode_count);
 
         if (tracking_id) {
             const { data: vistosDB } = await clienteSupabase.from('user_episodes').select('season_number, episode_number').eq('tracking_id', tracking_id);
-            vistosTemporal = vistosDB || [];
-            btnMarcarSerieDetalle.classList.remove('hidden');
-            evaluarBotonSerieCompleta(tracking_id, tmdb_id, titulo);
+            vistosTemporal = vistosDB || []; btnMarcarSerieDetalle.classList.remove('hidden'); evaluarBotonSerieCompleta(tracking_id, tmdb_id, titulo);
         } else { vistosTemporal = []; btnMarcarSerieDetalle.classList.add('hidden'); }
 
         detailSeasonsContent.innerHTML = '';
@@ -930,9 +763,7 @@ async function renderizarTemporadas(tmdb_id, tracking_id, titulo) {
 
             if (tracking_id) {
                 const vistosDeTemp = vistosTemporal.filter(v => v.season_number === temp.season_number).length;
-                const totalDeTemp = temp.episode_count;
-                const tempCompleta = vistosDeTemp === totalDeTemp && totalDeTemp > 0;
-
+                const totalDeTemp = temp.episode_count; const tempCompleta = vistosDeTemp === totalDeTemp && totalDeTemp > 0;
                 if (vistosDeTemp === 0) estadoTempHtml = '<span class="season-status-badge text-gray-400 text-[10px] font-normal px-2 bg-gray-800 rounded border border-gray-700 tracking-wider uppercase ml-auto">⏳ Ptes</span>';
                 else if (vistosDeTemp < totalDeTemp) estadoTempHtml = `<span class="season-status-badge text-yellow-400 text-[10px] font-normal px-2 bg-yellow-900/30 rounded border border-yellow-700/50 tracking-wider uppercase ml-auto">👀 (${vistosDeTemp}/${totalDeTemp})</span>`;
                 else estadoTempHtml = '<span class="season-status-badge text-green-400 text-[10px] font-normal px-2 bg-green-900/30 rounded border border-green-700/50 tracking-wider uppercase ml-auto">✅ Vista</span>';
@@ -965,23 +796,16 @@ function evaluarBotonSerieCompleta(tracking_id, tmdb_id, titulo) {
     if (!btnMarcarSerieDetalle) return;
     const totalVistos = vistosTemporal.length;
     const serieCompleta = totalVistos >= totalSerieCapitulosGlobal && totalSerieCapitulosGlobal > 0;
-
     if (serieCompleta) {
-        btnMarcarSerieDetalle.textContent = "✓ Serie completada";
-        btnMarcarSerieDetalle.disabled = true;
+        btnMarcarSerieDetalle.textContent = "✓ Serie completada"; btnMarcarSerieDetalle.disabled = true;
         btnMarcarSerieDetalle.className = "hidden md:block bg-green-950/60 text-green-400 opacity-60 cursor-not-allowed text-xs font-bold py-1.5 px-3 rounded-lg shadow border border-green-800/50";
     } else {
-        btnMarcarSerieDetalle.textContent = "✓ Marcar serie completa";
-        btnMarcarSerieDetalle.disabled = false;
+        btnMarcarSerieDetalle.textContent = "✓ Marcar serie completa"; btnMarcarSerieDetalle.disabled = false;
         btnMarcarSerieDetalle.className = "bg-green-700 hover:bg-green-600 text-white text-xs font-bold py-1.5 px-3 rounded-lg shadow transition-colors";
-        
         btnMarcarSerieDetalle.onclick = async () => {
-            btnMarcarSerieDetalle.textContent = "⌛ Guardando...";
-            btnMarcarSerieDetalle.disabled = true;
-            await procesarSerieCompletaBBDD(tracking_id, tmdb_id);
-            await actualizarEstadoSeguro(tracking_id, 'vista');
-            renderizarTemporadas(tmdb_id, tracking_id, titulo); 
-            cargarMiLista(); 
+            btnMarcarSerieDetalle.textContent = "⌛ Guardando..."; btnMarcarSerieDetalle.disabled = true;
+            await procesarSerieCompletaBBDD(tracking_id, tmdb_id); await actualizarEstadoSeguro(tracking_id, 'vista');
+            renderizarTemporadas(tmdb_id, tracking_id, titulo); cargarMiLista(); 
         };
     }
 }
@@ -989,31 +813,24 @@ function evaluarBotonSerieCompleta(tracking_id, tmdb_id, titulo) {
 async function cargarEpisodios(cabeceraDiv, tmdb_id, season_number, tracking_id) {
     const contenedor = cabeceraDiv.nextElementSibling; 
     if (contenedor.innerHTML !== '') { contenedor.classList.toggle('hidden'); return; }
-    
-    contenedor.classList.remove('hidden');
-    contenedor.innerHTML = '<p class="text-xs text-gray-400 p-3">Buscando capítulos...</p>';
-
+    contenedor.classList.remove('hidden'); contenedor.innerHTML = '<p class="text-xs text-gray-400 p-3">Buscando capítulos...</p>';
     const res = await fetch(`https://api.themoviedb.org/3/tv/${tmdb_id}/season/${season_number}?language=es-ES`, { headers: { Authorization: `Bearer ${TMDB_TOKEN}` } });
     const data = await res.json();
-    
     contenedor.innerHTML = '';
     data.episodes.forEach(ep => {
         const estaVisto = tracking_id ? vistosTemporal.some(v => v.season_number === season_number && v.episode_number === ep.episode_number) : false;
         const fechaHtml = ep.air_date ? `<span class="text-[10px] text-gray-500 font-normal ml-auto whitespace-nowrap hidden sm:block">${formatearFecha(ep.air_date)}</span>` : '';
         const duracionHtml = ep.runtime ? `<span class="text-[10px] text-gray-400 bg-gray-800/80 px-1.5 py-0.5 rounded border border-gray-700/50 shadow-sm ml-2 whitespace-nowrap">⏳ ${ep.runtime}m</span>` : '';
-        
         const controlHtml = tracking_id 
             ? `<input type="checkbox" id="ep-${ep.id}" ${estaVisto ? 'checked' : ''} onchange="marcarCapitulo('${tracking_id}', ${season_number}, ${ep.episode_number}, this.checked, ${tmdb_id})" class="peer w-4 h-4 accent-indigo-500 rounded cursor-pointer flex-shrink-0">`
             : `<span class="w-4 h-4 flex-shrink-0 text-gray-600 text-[10px] flex items-center justify-center">▶</span>`;
-
         contenedor.innerHTML += `
             <div class="flex items-center gap-3 p-2 hover:bg-gray-800/80 rounded-xl transition-colors border-b border-gray-800/60 last:border-0">
                 ${controlHtml}
                 <label for="ep-${ep.id}" class="${tracking_id ? 'cursor-pointer' : ''} flex items-center gap-2 flex-grow">
                     <span class="text-[11px] font-bold text-gray-500 w-5 flex-shrink-0">${ep.episode_number}.</span>
                     <span class="text-[13px] text-gray-300 line-clamp-1 ${tracking_id ? 'peer-checked:line-through peer-checked:text-gray-600' : ''} transition-all">${ep.name}</span>
-                    ${duracionHtml}
-                    ${fechaHtml}
+                    ${duracionHtml} ${fechaHtml}
                 </label>
             </div>
         `;
@@ -1028,44 +845,32 @@ async function marcarCapitulo(tracking_id, season_number, episode_number, isChec
         await clienteSupabase.from('user_episodes').delete().match({ tracking_id, season_number, episode_number });
         vistosTemporal = vistosTemporal.filter(v => !(v.season_number === season_number && v.episode_number === episode_number));
     }
-    actualizarHeaderTemporada(season_number);
-    await evaluarEstadoSerieDesdeEpisodios(tracking_id, tmdb_id);
+    actualizarHeaderTemporada(season_number); await evaluarEstadoSerieDesdeEpisodios(tracking_id, tmdb_id);
 }
 
 async function marcarTemporadaCompleta(tracking_id, season_number, totalCapitulos, btnElement, tmdb_id) {
-    btnElement.textContent = "⌛...";
-    btnElement.disabled = true;
-    
+    btnElement.textContent = "⌛..."; btnElement.disabled = true;
     await clienteSupabase.from('user_episodes').delete().match({ tracking_id, season_number });
-    const inserts = [];
-    for(let i = 1; i <= totalCapitulos; i++) inserts.push({ tracking_id, season_number, episode_number: i });
+    const inserts = []; for(let i = 1; i <= totalCapitulos; i++) inserts.push({ tracking_id, season_number, episode_number: i });
     await clienteSupabase.from('user_episodes').insert(inserts);
-
     vistosTemporal = vistosTemporal.filter(v => v.season_number !== season_number);
     for(let i = 1; i <= totalCapitulos; i++) vistosTemporal.push({ season_number, episode_number: i });
-
-    const contenedor = btnElement.parentElement.nextElementSibling;
-    contenedor.innerHTML = ''; contenedor.classList.add('hidden');
-    actualizarHeaderTemporada(season_number);
-    await evaluarEstadoSerieDesdeEpisodios(tracking_id, tmdb_id);
+    const contenedor = btnElement.parentElement.nextElementSibling; contenedor.innerHTML = ''; contenedor.classList.add('hidden');
+    actualizarHeaderTemporada(season_number); await evaluarEstadoSerieDesdeEpisodios(tracking_id, tmdb_id);
 }
 
 function actualizarHeaderTemporada(season_number) {
-    const tempDiv = document.querySelector(`[data-season-div="${season_number}"]`);
-    if (!tempDiv) return;
+    const tempDiv = document.querySelector(`[data-season-div="${season_number}"]`); if (!tempDiv) return;
     const totalCapitulos = parseInt(tempDiv.getAttribute('data-total-caps') || '0');
     const vistosDeTemp = vistosTemporal.filter(v => v.season_number === season_number).length;
     const tempCompleta = vistosDeTemp === totalCapitulos && totalCapitulos > 0;
-
-    const badgeElem = tempDiv.querySelector('.season-status-badge');
-    const btnElem = tempDiv.querySelector('.season-action-btn');
+    const badgeElem = tempDiv.querySelector('.season-status-badge'); const btnElem = tempDiv.querySelector('.season-action-btn');
 
     if (badgeElem) {
         if (vistosDeTemp === 0) badgeElem.outerHTML = '<span class="season-status-badge text-gray-400 text-[10px] font-normal px-2 bg-gray-800 rounded border border-gray-700 tracking-wider uppercase ml-auto">⏳ Ptes</span>';
         else if (vistosDeTemp < totalCapitulos) badgeElem.outerHTML = `<span class="season-status-badge text-yellow-400 text-[10px] font-normal px-2 bg-yellow-900/30 rounded border border-yellow-700/50 tracking-wider uppercase ml-auto">👀 (${vistosDeTemp}/${totalCapitulos})</span>`;
         else badgeElem.outerHTML = '<span class="season-status-badge text-green-400 text-[10px] font-normal px-2 bg-green-900/30 rounded border border-green-700/50 tracking-wider uppercase ml-auto">✅ Vista</span>';
     }
-
     if (btnElem) {
         if (tempCompleta) {
             btnElem.disabled = true; btnElem.textContent = "✓ Temp";
@@ -1078,21 +883,15 @@ function actualizarHeaderTemporada(season_number) {
 }
 
 async function evaluarEstadoSerieDesdeEpisodios(tracking_id, tmdb_id) {
-    const totalVistos = vistosTemporal.length;
-    let nuevoEstado = 'pendiente';
+    const totalVistos = vistosTemporal.length; let nuevoEstado = 'pendiente';
     if (totalVistos >= totalSerieCapitulosGlobal && totalSerieCapitulosGlobal > 0) nuevoEstado = 'vista';
     else if (totalVistos > 0) nuevoEstado = 'viendo';
-
     await actualizarEstadoSeguro(tracking_id, nuevoEstado);
-    
     const idx = miBibliotecaLocal.findIndex(r => r.id === tracking_id);
     if (idx > -1) {
-        miBibliotecaLocal[idx].status = nuevoEstado;
-        miBibliotecaLocal[idx].updated_local = new Date().toISOString();
-        miBibliotecaLocal[idx].user_episodes = [...vistosTemporal]; 
-        recalcularSiguienteCapitulo(miBibliotecaLocal[idx]); 
+        miBibliotecaLocal[idx].status = nuevoEstado; miBibliotecaLocal[idx].updated_local = new Date().toISOString();
+        miBibliotecaLocal[idx].user_episodes = [...vistosTemporal]; recalcularSiguienteCapitulo(miBibliotecaLocal[idx]); 
     }
     const titulo = document.getElementById('detailTitle').textContent;
-    evaluarBotonSerieCompleta(tracking_id, tmdb_id, titulo);
-    aplicarFiltrosYDiseño(); 
+    evaluarBotonSerieCompleta(tracking_id, tmdb_id, titulo); aplicarFiltrosYDiseño(); 
 }
