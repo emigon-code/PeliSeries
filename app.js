@@ -22,6 +22,7 @@ let filterRating8Plus = false;
 let filterImdbRating8Plus = false; 
 let filterMyRating8Plus = false; 
 let filterNovedades = false; 
+let currentGenreFilter = 'all'; // FILTRO DE GÉNERO
 let currentSort = 'recent'; 
 let currentSearchSort = 'rating'; 
 let localSearchQuery = ''; 
@@ -82,6 +83,7 @@ const btnMarcarSerieDetalle = document.getElementById('btnMarcarSerieDetalle');
 const modalPersona = document.getElementById('modalPersona');
 const btnFilterNovedades = document.getElementById('btnFilterNovedades');
 const btnFilterImdbRating = document.getElementById('btnFilterImdbRating');
+const genreFilterSelect = document.getElementById('genreFilterSelect');
 
 // --- AUTENTICACIÓN ---
 async function iniciarSesion() {
@@ -205,14 +207,14 @@ function exportarAExcel() {
         return {
             'Título': item.title, 'Tipo': item.type === 'movie' ? 'Película' : 'Serie', 'Estado': estadoFormateado,
             'Mi Nota': (registro.personal_rating && registro.personal_rating > 0) ? registro.personal_rating : 'Sin nota',
-            'Nota TMDB': details.rating || 'N/A', 'Nota IMDb': details.rating_imdb || 'N/A', 'Año': details.year || 'N/A', 'Capítulos Vistos': progresoCapitulos,
+            'Nota TMDB': details.rating || 'N/A', 'Nota IMDb': details.rating_imdb || 'N/A', 'Año': details.year || 'N/A', 'Géneros': details.genres || 'N/A', 'Capítulos Vistos': progresoCapitulos,
             'Siguiente Episodio': details.next_episode || 'N/A', 'Temporadas': item.type === 'tv' ? (details.seasons_count || 0) : 'N/A',
             'Estado Emisión': item.type === 'tv' ? (details.is_ended ? 'Finalizada' : 'En emisión') : 'N/A',
             'Sinopsis': details.overview || '', 'TMDB ID': item.tmdb_id
         };
     });
     const hoja = XLSX.utils.json_to_sheet(datosFormateados);
-    hoja['!cols'] = [ {wch: 32}, {wch: 10}, {wch: 12}, {wch: 10}, {wch: 12}, {wch: 12}, {wch: 8}, {wch: 18}, {wch: 18}, {wch: 12}, {wch: 15}, {wch: 55}, {wch: 10} ];
+    hoja['!cols'] = [ {wch: 32}, {wch: 10}, {wch: 12}, {wch: 10}, {wch: 12}, {wch: 12}, {wch: 8}, {wch: 22}, {wch: 18}, {wch: 18}, {wch: 12}, {wch: 15}, {wch: 55}, {wch: 10} ];
     const libro = XLSX.utils.book_new(); XLSX.utils.book_append_sheet(libro, hoja, "Mi Lista");
     XLSX.writeFile(libro, `PeliSeries_MiLista_${new Date().toISOString().slice(0, 10)}.xlsx`);
 }
@@ -308,6 +310,10 @@ function updateBtnClassesMulti(selector, activeArray, dataAttr) {
 }
 
 localSearchInput.addEventListener('input', (e) => { localSearchQuery = e.target.value.toLowerCase().trim(); aplicarFiltrosYDiseño(); });
+if (genreFilterSelect) {
+    genreFilterSelect.addEventListener('change', (e) => { currentGenreFilter = e.target.value; aplicarFiltrosYDiseño(); });
+}
+
 document.querySelectorAll('.filter-type-btn').forEach(btn => {
     btn.addEventListener('click', (e) => {
         const sel = e.currentTarget.getAttribute('data-filter-type');
@@ -384,12 +390,29 @@ function recalcularSiguienteCapitulo(registro) {
     registro.details.next_episode = null;
 }
 
+function actualizarOpcionesSelectorGeneros() {
+    if (!genreFilterSelect) return;
+    const generosUnicos = new Set();
+    miBibliotecaLocal.forEach(r => {
+        if (r.details && r.details.genres) {
+            r.details.genres.split(',').forEach(g => generosUnicos.add(g.trim()));
+        }
+    });
+
+    const valorActual = genreFilterSelect.value;
+    genreFilterSelect.innerHTML = '<option value="all" class="bg-gray-900 text-gray-300">🎭 Todos los géneros</option>';
+    Array.from(generosUnicos).sort().forEach(g => {
+        if (g) genreFilterSelect.innerHTML += `<option value="${g}" class="bg-gray-900 text-gray-300">${g}</option>`;
+    });
+    genreFilterSelect.value = generosUnicos.has(valorActual) ? valorActual : 'all';
+}
+
 async function cargarMiLista() {
     if (!usuarioActual) return;
     myListGrid.innerHTML = '<p class="text-indigo-400 col-span-full text-center py-8">Cargando biblioteca personal...</p>';
 
     const { data, error } = await clienteSupabase.from('user_tracking')
-        .select(`*, items ( id, tmdb_id, title, type, poster_path, rating_tmdb, rating_imdb, runtime, country, api_updated_at ), user_episodes (season_number, episode_number)`)
+        .select(`*, items ( id, tmdb_id, title, type, poster_path, rating_tmdb, rating_imdb, runtime, country, genres, api_updated_at ), user_episodes (season_number, episode_number)`)
         .eq('user_id', usuarioActual.id);
 
     if (error || !data || data.length === 0) { 
@@ -411,6 +434,7 @@ async function cargarMiLista() {
             rating_imdb: (item.rating_imdb !== null && item.rating_imdb !== undefined) ? Number(item.rating_imdb).toFixed(1) : null,
             runtime: item.runtime || null,
             country: item.country || '',
+            genres: item.genres || '',
             overview: 'Haz clic para ver detalles.',
             seasons_count: 0,
             is_ended: false,
@@ -420,13 +444,14 @@ async function cargarMiLista() {
 
         const haceSieteDias = new Date(Date.now() - 7 * 24 * 60 * 60 * 1000);
         const estaCaducado = !item.api_updated_at || new Date(item.api_updated_at) < haceSieteDias;
-        if (estaCaducado || item.rating_imdb === null || item.rating_imdb === undefined || item.rating_tmdb === null) {
+        if (estaCaducado || item.rating_imdb === null || item.rating_imdb === undefined || item.rating_tmdb === null || !item.genres) {
             itemsParaSincronizar.push(registro);
         }
 
         return registro;
     });
 
+    actualizarOpcionesSelectorGeneros();
     aplicarFiltrosYDiseño();
 
     if (itemsParaSincronizar.length > 0) {
@@ -452,6 +477,7 @@ async function sincronizarEnSegundoPlano(registros) {
                 let duracion = tmdbData.runtime || (tmdbData.episode_run_time && tmdbData.episode_run_time[0]) || null;
                 const codigosPais = tmdbData.origin_country || (tmdbData.production_countries ? tmdbData.production_countries.map(c=>c.iso_3166_1) : []);
                 let paisStr = Array.isArray(codigosPais) ? codigosPais.join(',') : (codigosPais || '');
+                let generosStr = tmdbData.genres ? tmdbData.genres.map(g => g.name).join(', ') : '';
 
                 let ratingImdb = null;
                 let imdbId = tmdbData.imdb_id || (tmdbData.external_ids && tmdbData.external_ids.imdb_id);
@@ -466,16 +492,14 @@ async function sincronizarEnSegundoPlano(registros) {
                     } catch(e) {}
                 }
 
-                // Guardado directo en Supabase
-                const { error: errUpdate } = await clienteSupabase.from('items').update({
+                await clienteSupabase.from('items').update({
                     rating_tmdb: ratingTmdb,
                     rating_imdb: ratingImdb,
                     runtime: duracion,
                     country: paisStr,
+                    genres: generosStr,
                     api_updated_at: new Date().toISOString()
                 }).eq('id', item.id);
-
-                if (errUpdate) console.error("Error en Supabase update:", errUpdate);
 
                 const idx = miBibliotecaLocal.findIndex(r => r.id === reg.id);
                 if (idx > -1) {
@@ -483,10 +507,12 @@ async function sincronizarEnSegundoPlano(registros) {
                     if (ratingImdb) miBibliotecaLocal[idx].details.rating_imdb = ratingImdb.toFixed(1);
                     miBibliotecaLocal[idx].details.country = paisStr;
                     miBibliotecaLocal[idx].details.runtime = duracion;
+                    miBibliotecaLocal[idx].details.genres = generosStr;
                 }
             } catch(e) { console.error("Error en petición:", e); }
         }));
 
+        actualizarOpcionesSelectorGeneros();
         aplicarFiltrosYDiseño();
         await new Promise(r => setTimeout(r, 200));
     }
@@ -514,11 +540,17 @@ function aplicarFiltrosYDiseño() {
             if (isNaN(rImdb) || rImdb < 8) matchImdbRating = false;
         }
 
+        let matchGenre = true;
+        if (currentGenreFilter !== 'all') {
+            const generosItem = (registro.details.genres || '').split(',').map(g => g.trim());
+            matchGenre = generosItem.includes(currentGenreFilter);
+        }
+
         let matchMyRating = !filterMyRating8Plus || ((registro.personal_rating || 0) >= 8);
         let matchSearch = localSearchQuery === '' || registro.items.title.toLowerCase().includes(localSearchQuery);
         let matchNovedades = !filterNovedades || registro.has_new_episodes;
         
-        return matchType && matchStatus && matchRating && matchImdbRating && matchMyRating && matchSearch && matchNovedades;
+        return matchType && matchStatus && matchRating && matchImdbRating && matchGenre && matchMyRating && matchSearch && matchNovedades;
     });
 
     dataFiltrada.sort((a, b) => {
@@ -605,13 +637,19 @@ function cerrarModalDetalle() {
 }
 
 async function cargarDatosAvanzados(tmdb_id, tipo) {
-    detailCountry.textContent = ''; detailRuntime.classList.add('hidden'); detailImdbRating.classList.add('hidden');
-    detailExtraInfo.classList.add('hidden'); detailExtraInfo.innerHTML = '';
+    detailCountry.textContent = ''; 
+    detailRuntime.classList.add('hidden'); 
+    detailExtraInfo.classList.add('hidden'); 
+    detailExtraInfo.innerHTML = '';
 
     try {
         const endpoint = tipo === 'movie' ? `movie/${tmdb_id}` : `tv/${tmdb_id}`;
         const res = await fetch(`https://api.themoviedb.org/3/${endpoint}?language=es-ES&append_to_response=external_ids`, { headers: { Authorization: `Bearer ${TMDB_TOKEN}` } });
         const dataFull = await res.json();
+
+        if (dataFull.overview) detailOverview.textContent = dataFull.overview;
+        const yearStr = (dataFull.release_date || dataFull.first_air_date || '').substring(0, 4);
+        if (yearStr) detailYear.textContent = `(${yearStr})`;
 
         let duracion = dataFull.runtime || (dataFull.episode_run_time && dataFull.episode_run_time[0]);
         const codigosPais = dataFull.origin_country || (dataFull.production_countries ? dataFull.production_countries.map(c=>c.iso_3166_1) : []);
@@ -629,7 +667,6 @@ async function cargarDatosAvanzados(tmdb_id, tipo) {
                         detailImdbRating.innerHTML = `🎬 IMDb: <span class="text-white">${omdbData.imdbRating}</span>`;
                         detailImdbRating.classList.remove('hidden');
 
-                        // Guardado inmediato en Supabase y en la vista global al abrir la ficha
                         const ratingNum = parseFloat(omdbData.imdbRating);
                         const idx = miBibliotecaLocal.findIndex(r => r.items.tmdb_id === tmdb_id);
                         if (idx > -1) {
@@ -656,8 +693,14 @@ async function cargarDatosAvanzados(tmdb_id, tipo) {
         }
 
         if (tipo === 'tv') {
-            detailSeasons.textContent = `${dataFull.number_of_seasons} Temporadas`; detailSeasons.classList.remove('hidden');
-            detailStatus.textContent = (dataFull.status === 'Ended' || dataFull.status === 'Canceled') ? '🔴 Finalizada' : '🟢 En emisión'; detailStatus.classList.remove('hidden');
+            const totalTemp = dataFull.number_of_seasons || 0;
+            detailSeasons.textContent = `${totalTemp} Temporada${totalTemp !== 1 ? 's' : ''}`;
+            detailSeasons.classList.remove('hidden');
+            detailStatus.textContent = (dataFull.status === 'Ended' || dataFull.status === 'Canceled') ? '🔴 Finalizada' : '🟢 En emisión';
+            detailStatus.classList.remove('hidden');
+        } else {
+            detailSeasons.classList.add('hidden');
+            detailStatus.classList.add('hidden');
         }
     } catch(e) {}
 }
@@ -726,9 +769,13 @@ async function abrirModalDetalleDesdeBusqueda(tmdb_id) {
     
     detailTitle.textContent = item.title || item.name;
     detailBadgeType.textContent = item.media_type === 'movie' ? 'Película' : 'Serie';
-    detailYear.textContent = (item.release_date || item.first_air_date || '').substring(0, 4);
+    
+    const yearStr = (item.release_date || item.first_air_date || '').substring(0, 4);
+    detailYear.textContent = yearStr ? `(${yearStr})` : '';
+    
     detailPoster.src = item.poster_path ? `https://image.tmdb.org/t/p/w500${item.poster_path}` : 'https://via.placeholder.com/500x750/1f2937/ffffff?text=Sin+Poster';
     detailRating.textContent = `⭐ ${item.vote_average ? item.vote_average.toFixed(1) : 'N/A'}`;
+    detailImdbRating.classList.add('hidden');
     detailOverview.textContent = item.overview || 'Sin descripción disponible en español.';
     detailSeasons.classList.add('hidden'); detailStatus.classList.add('hidden');
 
@@ -741,6 +788,7 @@ async function abrirModalDetalleDesdeBusqueda(tmdb_id) {
 
     cargarCreditos(tmdb_id, item.media_type); cargarRecomendaciones(tmdb_id, item.media_type);
     if (item.media_type === 'tv') renderizarTemporadas(tmdb_id, null, item.title || item.name);
+    else detailSeasonsWrapper.classList.add('hidden');
 }
 
 function abrirModalDetalleDesdeLista(tracking_id) {
@@ -751,10 +799,22 @@ function abrirModalDetalleDesdeLista(tracking_id) {
     detailPersonalRating.value = registro.personal_rating || '0';
     detailTitle.textContent = item.title;
     detailBadgeType.textContent = item.type === 'movie' ? 'Película' : 'Serie';
-    detailYear.textContent = details.year;
+    
+    detailSeasons.classList.add('hidden');
+    detailStatus.classList.add('hidden');
+    
+    detailYear.textContent = details.year ? `(${details.year})` : '';
     detailPoster.src = item.poster_path ? `https://image.tmdb.org/t/p/w500${item.poster_path}` : 'https://via.placeholder.com/500x750/1f2937/ffffff?text=Sin+Poster';
     detailRating.textContent = `⭐ ${details.rating}`;
-    detailOverview.textContent = details.overview;
+    
+    if (details.rating_imdb && details.rating_imdb !== 'N/A') {
+        detailImdbRating.innerHTML = `🎬 IMDb: <span class="text-white">${details.rating_imdb}</span>`;
+        detailImdbRating.classList.remove('hidden');
+    } else {
+        detailImdbRating.classList.add('hidden');
+    }
+
+    detailOverview.textContent = 'Cargando descripción...';
 
     cargarDatosAvanzados(item.tmdb_id, item.type);
 
@@ -762,6 +822,7 @@ function abrirModalDetalleDesdeLista(tracking_id) {
 
     cargarCreditos(item.tmdb_id, item.type); cargarRecomendaciones(item.tmdb_id, item.type);
     if (item.type === 'tv') renderizarTemporadas(item.tmdb_id, registro.id, item.title);
+    else detailSeasonsWrapper.classList.add('hidden');
 }
 
 async function cambiarNotaPersonal(valor) {
