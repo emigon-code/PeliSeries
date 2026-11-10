@@ -22,7 +22,7 @@ let filterRating8Plus = false;
 let filterImdbRating8Plus = false; 
 let filterMyRating8Plus = false; 
 let filterNovedades = false; 
-let currentGenreFilter = 'all'; // FILTRO DE GÉNERO
+let currentGenreFilter = 'all'; 
 let currentSort = 'recent'; 
 let currentSearchSort = 'rating'; 
 let localSearchQuery = ''; 
@@ -66,6 +66,7 @@ const detailCountry = document.getElementById('detailCountry');
 const detailRating = document.getElementById('detailRating');
 const detailImdbRating = document.getElementById('detailImdbRating'); 
 const detailRuntime = document.getElementById('detailRuntime'); 
+const detailGenres = document.getElementById('detailGenres'); 
 const detailExtraInfo = document.getElementById('detailExtraInfo'); 
 const detailPersonalRating = document.getElementById('detailPersonalRating');
 const miValoracionContenedor = document.getElementById('miValoracionContenedor');
@@ -269,11 +270,18 @@ function renderResults(resultados) {
     });
 
     ordenados.forEach(item => {
-        const titulo = item.title || item.name; const tipo = item.media_type === 'movie' ? 'Película' : 'Serie';
+        const titulo = item.title || item.name;
+        const isMovie = item.media_type === 'movie';
+        
+        // Insignias en contraste de colores
+        const badgeTipo = isMovie 
+            ? `<span class="bg-cyan-950/90 text-cyan-300 border border-cyan-700/60 px-2 py-0.5 rounded-md text-[9px] font-black uppercase tracking-widest">🍿 Película</span>`
+            : `<span class="bg-amber-950/90 text-amber-300 border border-amber-700/60 px-2 py-0.5 rounded-md text-[9px] font-black uppercase tracking-widest">📺 Serie</span>`;
+
         const imgUrl = item.poster_path ? `https://image.tmdb.org/t/p/w500${item.poster_path}` : 'https://via.placeholder.com/500x750/1f2937/ffffff?text=Sin+Poster';
         const rating = item.vote_average ? item.vote_average.toFixed(1) : 'N/A';
         const rawYear = (item.release_date || item.first_air_date || '').substring(0, 4);
-        const yearBadge = rawYear ? `<span class="ml-1 text-gray-500 font-normal">(${rawYear})</span>` : '';
+        const yearBadge = rawYear ? `<span class="ml-1 text-gray-400 text-xs font-normal">(${rawYear})</span>` : '';
 
         const yaLaTengo = miListaTMDBIDs.includes(item.id);
         const botonAñadir = yaLaTengo 
@@ -281,7 +289,7 @@ function renderResults(resultados) {
             : `<button class="mt-auto w-full bg-gray-800 hover:bg-gradient-to-r hover:from-indigo-500 hover:to-purple-600 text-white py-2.5 rounded-xl text-xs font-semibold transition-all shadow border border-gray-700" onclick="event.stopPropagation(); añadirALista(${item.id})">+ Añadir a mi lista</button>`;
 
         const card = document.createElement('div');
-        card.className = 'glass-panel rounded-2xl overflow-hidden shadow-xl hover:border-indigo-500/50 hover:shadow-indigo-500/10 transition-all cursor-pointer group relative';
+        card.className = 'glass-panel rounded-2xl overflow-hidden shadow-xl hover:border-indigo-500/50 hover:shadow-indigo-500/10 transition-all cursor-pointer group relative flex flex-col';
         card.onclick = () => abrirModalDetalleDesdeBusqueda(item.id);
 
         card.innerHTML = `
@@ -289,8 +297,8 @@ function renderResults(resultados) {
                 <img src="${imgUrl}" alt="${titulo}" class="w-full h-full object-cover group-hover:scale-105 transition-transform duration-300">
                 <span class="absolute top-2 right-2 bg-black/80 backdrop-blur-md text-yellow-400 text-[10px] font-bold px-2 py-1 rounded-lg border border-yellow-500/20 shadow-md">⭐ ${rating}</span>
             </div>
-            <div class="p-4 flex flex-col flex-grow bg-gray-900/60">
-                <span class="text-[9px] font-black uppercase tracking-widest text-indigo-400/80 mb-1">${tipo}</span>
+            <div class="p-3.5 flex flex-col flex-grow bg-gray-900/60">
+                <div class="mb-1.5">${badgeTipo}</div>
                 <h3 class="font-bold text-sm leading-snug mb-3 line-clamp-2 group-hover:text-indigo-300 transition-colors">${titulo} ${yearBadge}</h3>
                 ${botonAñadir}
             </div>
@@ -412,7 +420,7 @@ async function cargarMiLista() {
     myListGrid.innerHTML = '<p class="text-indigo-400 col-span-full text-center py-8">Cargando biblioteca personal...</p>';
 
     const { data, error } = await clienteSupabase.from('user_tracking')
-        .select(`*, items ( id, tmdb_id, title, type, poster_path, rating_tmdb, rating_imdb, runtime, country, genres, api_updated_at ), user_episodes (season_number, episode_number)`)
+        .select(`*, items ( id, tmdb_id, title, type, poster_path, rating_tmdb, rating_imdb, runtime, country, genres, year, api_updated_at ), user_episodes (season_number, episode_number)`)
         .eq('user_id', usuarioActual.id);
 
     if (error || !data || data.length === 0) { 
@@ -435,16 +443,16 @@ async function cargarMiLista() {
             runtime: item.runtime || null,
             country: item.country || '',
             genres: item.genres || '',
+            year: item.year || '',
             overview: 'Haz clic para ver detalles.',
             seasons_count: 0,
             is_ended: false,
-            seasons_data: [],
-            year: ''
+            seasons_data: []
         };
 
         const haceSieteDias = new Date(Date.now() - 7 * 24 * 60 * 60 * 1000);
         const estaCaducado = !item.api_updated_at || new Date(item.api_updated_at) < haceSieteDias;
-        if (estaCaducado || item.rating_imdb === null || item.rating_imdb === undefined || item.rating_tmdb === null || !item.genres) {
+        if (estaCaducado || item.rating_imdb === null || item.rating_imdb === undefined || item.rating_tmdb === null || !item.genres || !item.year) {
             itemsParaSincronizar.push(registro);
         }
 
@@ -478,6 +486,7 @@ async function sincronizarEnSegundoPlano(registros) {
                 const codigosPais = tmdbData.origin_country || (tmdbData.production_countries ? tmdbData.production_countries.map(c=>c.iso_3166_1) : []);
                 let paisStr = Array.isArray(codigosPais) ? codigosPais.join(',') : (codigosPais || '');
                 let generosStr = tmdbData.genres ? tmdbData.genres.map(g => g.name).join(', ') : '';
+                let rawYear = (tmdbData.release_date || tmdbData.first_air_date || '').substring(0, 4);
 
                 let ratingImdb = null;
                 let imdbId = tmdbData.imdb_id || (tmdbData.external_ids && tmdbData.external_ids.imdb_id);
@@ -498,6 +507,7 @@ async function sincronizarEnSegundoPlano(registros) {
                     runtime: duracion,
                     country: paisStr,
                     genres: generosStr,
+                    year: rawYear,
                     api_updated_at: new Date().toISOString()
                 }).eq('id', item.id);
 
@@ -508,6 +518,7 @@ async function sincronizarEnSegundoPlano(registros) {
                     miBibliotecaLocal[idx].details.country = paisStr;
                     miBibliotecaLocal[idx].details.runtime = duracion;
                     miBibliotecaLocal[idx].details.genres = generosStr;
+                    miBibliotecaLocal[idx].details.year = rawYear;
                 }
             } catch(e) { console.error("Error en petición:", e); }
         }));
@@ -572,8 +583,21 @@ function pintarMiLista(dataArray) {
         const item = registro.items; const details = registro.details;
         const imgUrl = item.poster_path ? `https://image.tmdb.org/t/p/w500${item.poster_path}` : 'https://via.placeholder.com/500x750/1f2937/ffffff?text=Sin+Poster';
         
+        const isMovie = item.type === 'movie';
+        
+        // Insignias en alto contraste de colores para Película vs Serie
+        const badgeTipo = isMovie 
+            ? `<span class="bg-cyan-950/90 text-cyan-300 border border-cyan-700/60 px-2 py-0.5 rounded-md text-[9px] font-black uppercase tracking-widest">🍿 Película</span>`
+            : `<span class="bg-amber-950/90 text-amber-300 border border-amber-700/60 px-2 py-0.5 rounded-md text-[9px] font-black uppercase tracking-widest">📺 Serie</span>`;
+
+        // Año y Géneros en la tarjeta
+        const yearBadge = details.year ? `<span class="ml-1 text-gray-400 text-xs font-normal">(${details.year})</span>` : '';
+        const genresBadge = details.genres ? `<span class="text-[10px] text-purple-300/80 font-medium block truncate mt-0.5">🎭 ${details.genres}</span>` : '';
+
+        // Duración exclusiva de Películas en la tarjeta
+        const runtimeBadge = (isMovie && details.runtime) ? `<span class="text-[10px] text-gray-400 font-medium block">⏳ ${details.runtime} min</span>` : '';
+
         let badgeSerie = ''; let badgeNextEpisode = '';
-        const yearBadge = details.year ? `<span class="ml-1 text-gray-500 font-normal">(${details.year})</span>` : '';
         const miNotaBadge = (registro.personal_rating > 0) 
             ? `<span class="absolute top-2 left-2 bg-blue-900/90 backdrop-blur-md text-blue-300 text-[11px] font-black px-2 py-1 rounded-lg border border-blue-500/50 shadow-md shadow-blue-900/50">★ ${registro.personal_rating}</span>` : '';
 
@@ -581,7 +605,7 @@ function pintarMiLista(dataArray) {
             ? `<span class="bg-black/80 backdrop-blur-md text-amber-300 text-[10px] font-bold px-2 py-1 rounded-lg border border-amber-500/30 shadow-md">🎬 ${details.rating_imdb}</span>`
             : `<span class="bg-black/60 backdrop-blur-md text-gray-400 text-[10px] font-bold px-2 py-1 rounded-lg border border-gray-700/50 shadow-md">🎬 --</span>`;
 
-        if (item.type === 'tv') {
+        if (!isMovie) {
             const estadoTexto = details.is_ended ? '🔴 Fin' : '🟢 Emisión';
             badgeSerie = `<span class="text-[10px] text-gray-400 font-medium block mt-1 tracking-wide">${details.seasons_count > 0 ? details.seasons_count + ' Temp. • ' : ''}${estadoTexto}</span>`;
             if (details.next_episode) badgeNextEpisode = `<div class="mt-1.5"><span class="inline-block text-[9px] sm:text-[10px] font-bold bg-indigo-950/80 text-indigo-300 px-2.5 py-0.5 rounded-lg border border-indigo-700/50 shadow-sm">▶ Siguiente: ${details.next_episode}</span></div>`;
@@ -613,8 +637,12 @@ function pintarMiLista(dataArray) {
                 ${badgeNewSeason}
             </div>
             <div class="p-3.5 flex flex-col flex-grow bg-gray-900/60">
-                <span class="text-[9px] font-black uppercase tracking-widest text-indigo-400/80 mb-1">${item.type === 'movie' ? 'Película' : 'Serie'}</span>
-                <h3 class="font-bold text-sm leading-snug mb-1 line-clamp-2 group-hover:text-indigo-300 transition-colors">${item.title} ${yearBadge}</h3>
+                <div class="flex items-center justify-between mb-1">
+                    ${badgeTipo}
+                    ${runtimeBadge}
+                </div>
+                <h3 class="font-bold text-sm leading-snug mb-0.5 line-clamp-2 group-hover:text-indigo-300 transition-colors">${item.title} ${yearBadge}</h3>
+                ${genresBadge}
                 ${badgeSerie}
                 ${badgeNextEpisode}
                 <div class="mt-auto pt-4" onclick="event.stopPropagation()">
@@ -639,6 +667,7 @@ function cerrarModalDetalle() {
 async function cargarDatosAvanzados(tmdb_id, tipo) {
     detailCountry.textContent = ''; 
     detailRuntime.classList.add('hidden'); 
+    detailGenres.classList.add('hidden');
     detailExtraInfo.classList.add('hidden'); 
     detailExtraInfo.innerHTML = '';
 
@@ -650,6 +679,12 @@ async function cargarDatosAvanzados(tmdb_id, tipo) {
         if (dataFull.overview) detailOverview.textContent = dataFull.overview;
         const yearStr = (dataFull.release_date || dataFull.first_air_date || '').substring(0, 4);
         if (yearStr) detailYear.textContent = `(${yearStr})`;
+
+        // Muestra de Género en la ficha
+        if (dataFull.genres && dataFull.genres.length > 0) {
+            detailGenres.textContent = `🎭 ${dataFull.genres.map(g => g.name).join(', ')}`;
+            detailGenres.classList.remove('hidden');
+        }
 
         let duracion = dataFull.runtime || (dataFull.episode_run_time && dataFull.episode_run_time[0]);
         const codigosPais = dataFull.origin_country || (dataFull.production_countries ? dataFull.production_countries.map(c=>c.iso_3166_1) : []);
@@ -768,8 +803,14 @@ async function abrirModalDetalleDesdeBusqueda(tmdb_id) {
     modalDetalle.classList.remove('hidden'); miValoracionContenedor.classList.add('hidden'); 
     
     detailTitle.textContent = item.title || item.name;
-    detailBadgeType.textContent = item.media_type === 'movie' ? 'Película' : 'Serie';
     
+    // Insignias estilizadas en modal
+    const isMovie = item.media_type === 'movie';
+    detailBadgeType.textContent = isMovie ? 'Película' : 'Serie';
+    detailBadgeType.className = isMovie 
+        ? 'text-xs font-bold uppercase px-3 py-1 rounded-full bg-cyan-950 text-cyan-300 border border-cyan-700'
+        : 'text-xs font-bold uppercase px-3 py-1 rounded-full bg-amber-950 text-amber-300 border border-amber-700';
+
     const yearStr = (item.release_date || item.first_air_date || '').substring(0, 4);
     detailYear.textContent = yearStr ? `(${yearStr})` : '';
     
@@ -798,14 +839,26 @@ function abrirModalDetalleDesdeLista(tracking_id) {
     modalDetalle.classList.remove('hidden'); miValoracionContenedor.classList.remove('hidden'); miValoracionContenedor.classList.add('flex');
     detailPersonalRating.value = registro.personal_rating || '0';
     detailTitle.textContent = item.title;
-    detailBadgeType.textContent = item.type === 'movie' ? 'Película' : 'Serie';
     
+    const isMovie = item.type === 'movie';
+    detailBadgeType.textContent = isMovie ? 'Película' : 'Serie';
+    detailBadgeType.className = isMovie 
+        ? 'text-xs font-bold uppercase px-3 py-1 rounded-full bg-cyan-950 text-cyan-300 border border-cyan-700'
+        : 'text-xs font-bold uppercase px-3 py-1 rounded-full bg-amber-950 text-amber-300 border border-amber-700';
+
     detailSeasons.classList.add('hidden');
     detailStatus.classList.add('hidden');
     
     detailYear.textContent = details.year ? `(${details.year})` : '';
     detailPoster.src = item.poster_path ? `https://image.tmdb.org/t/p/w500${item.poster_path}` : 'https://via.placeholder.com/500x750/1f2937/ffffff?text=Sin+Poster';
     detailRating.textContent = `⭐ ${details.rating}`;
+
+    if (details.genres) {
+        detailGenres.textContent = `🎭 ${details.genres}`;
+        detailGenres.classList.remove('hidden');
+    } else {
+        detailGenres.classList.add('hidden');
+    }
     
     if (details.rating_imdb && details.rating_imdb !== 'N/A') {
         detailImdbRating.innerHTML = `🎬 IMDb: <span class="text-white">${details.rating_imdb}</span>`;
