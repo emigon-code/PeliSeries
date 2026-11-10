@@ -89,15 +89,23 @@
             <div class="sticky top-2 z-30 glass-panel p-2 md:p-3.5 rounded-2xl mb-6 flex flex-col gap-2 shadow-2xl backdrop-blur-xl border border-white/10">
                 <div class="flex flex-row items-center justify-between gap-2 flex-wrap">
                     <!-- Buscador Local -->
-                    <div class="flex items-center glass-inset px-2.5 py-1 rounded-xl shadow-inner flex-grow sm:flex-grow-0 sm:w-56 border border-gray-600/50 focus-within:border-indigo-500 transition-colors">
+                    <div class="flex items-center glass-inset px-2.5 py-1 rounded-xl shadow-inner flex-grow sm:flex-grow-0 sm:w-48 border border-gray-600/50 focus-within:border-indigo-500 transition-colors">
                         <span class="text-gray-400 text-sm md:text-lg mr-1.5">🔍</span>
                         <input type="text" id="localSearchInput" placeholder="Buscar en mi lista..." class="bg-transparent text-xs md:text-sm text-white font-semibold focus:outline-none w-full py-0.5 placeholder-gray-500">
                     </div>
 
+                    <!-- Selector de Sagas Dinámico -->
+                    <div class="flex items-center glass-inset px-2.5 py-1 rounded-xl shadow-inner border border-amber-600/40 focus-within:border-amber-400 transition-colors shrink-0">
+                        <span class="text-amber-400 text-xs mr-1">🪐</span>
+                        <select id="sagaFilterSelect" class="bg-transparent text-xs text-amber-300 font-bold focus:outline-none cursor-pointer py-0.5 max-w-[140px] sm:max-w-none">
+                            <option value="all" class="bg-gray-900 text-gray-300">Todas las sagas</option>
+                        </select>
+                    </div>
+
                     <!-- Selector de Géneros Dinámico -->
-                    <div class="flex items-center glass-inset px-2.5 py-1 rounded-xl shadow-inner border border-gray-600/50 focus-within:border-indigo-500 transition-colors shrink-0">
-                        <span class="text-gray-400 text-xs mr-1">🎭</span>
-                        <select id="genreFilterSelect" class="bg-transparent text-xs text-gray-300 font-bold focus:outline-none cursor-pointer py-0.5 max-w-[150px] sm:max-w-none">
+                    <div class="flex items-center glass-inset px-2.5 py-1 rounded-xl shadow-inner border border-purple-600/40 focus-within:border-purple-400 transition-colors shrink-0">
+                        <span class="text-purple-400 text-xs mr-1">🎭</span>
+                        <select id="genreFilterSelect" class="bg-transparent text-xs text-purple-300 font-bold focus:outline-none cursor-pointer py-0.5 max-w-[140px] sm:max-w-none">
                             <option value="all" class="bg-gray-900 text-gray-300">Todos los géneros</option>
                         </select>
                     </div>
@@ -180,7 +188,6 @@
                             <span id="detailRating" class="bg-yellow-500/20 text-yellow-400 px-2.5 py-1 rounded-lg font-bold border border-yellow-500/30">⭐ 0.0</span>
                             <span id="detailImdbRating" class="hidden bg-gray-800/80 text-gray-300 px-2.5 py-1 rounded-lg font-bold border border-gray-600 shadow-sm flex items-center gap-1">🎬 IMDb: N/A</span>
                             <span id="detailRuntime" class="hidden bg-indigo-950/40 text-indigo-300 px-2.5 py-1 rounded-lg font-bold border border-indigo-800/50 shadow-sm">⏳ N/A</span>
-                            <span id="detailGenres" class="hidden bg-purple-950/50 text-purple-300 px-2.5 py-1 rounded-lg font-bold border border-purple-800/60 shadow-sm">🎭 Género</span>
                             
                             <div id="miValoracionContenedor" class="hidden items-center gap-2 bg-blue-900/20 border border-blue-500/30 px-2.5 py-1 rounded-lg">
                                 <span class="text-xs font-bold text-blue-400 uppercase tracking-widest">Mi Nota:</span>
@@ -196,6 +203,13 @@
                             <span id="detailSeasons" class="hidden bg-gray-700 px-2.5 py-1 rounded-lg font-semibold"></span>
                             <span id="detailStatus" class="hidden px-2.5 py-1 rounded-lg font-semibold"></span>
                         </div>
+
+                        <!-- ETIQUETAS DE GÉNERO Y SAGA VINCULADAS -->
+                        <div class="flex flex-wrap gap-2 mb-4">
+                            <div id="detailSaga" class="hidden"></div>
+                            <div id="detailGenres" class="hidden flex flex-wrap gap-1.5 items-center"></div>
+                        </div>
+
                         <h3 class="text-xs font-black uppercase text-gray-500 mb-1 tracking-wider">Sinopsis</h3>
                         <p id="detailOverview" class="text-gray-300 text-sm leading-relaxed mb-4"></p>
                         
