@@ -87,22 +87,29 @@
         <!-- VISTA 2: MI LISTA -->
         <div id="viewList">
             <div class="sticky top-2 z-30 glass-panel p-2 md:p-3.5 rounded-2xl mb-6 flex flex-col gap-2 shadow-2xl backdrop-blur-xl border border-white/10">
-                <div class="flex flex-row items-center justify-between gap-2">
+                <div class="flex flex-row items-center justify-between gap-2 flex-wrap">
                     <!-- Buscador Local -->
-                    <div class="flex items-center glass-inset px-2.5 py-1 rounded-xl shadow-inner flex-grow sm:flex-grow-0 sm:w-64 border border-gray-600/50 focus-within:border-indigo-500 transition-colors">
+                    <div class="flex items-center glass-inset px-2.5 py-1 rounded-xl shadow-inner flex-grow sm:flex-grow-0 sm:w-56 border border-gray-600/50 focus-within:border-indigo-500 transition-colors">
                         <span class="text-gray-400 text-sm md:text-lg mr-1.5">🔍</span>
                         <input type="text" id="localSearchInput" placeholder="Buscar en mi lista..." class="bg-transparent text-xs md:text-sm text-white font-semibold focus:outline-none w-full py-0.5 placeholder-gray-500">
                     </div>
 
+                    <!-- Selector de Géneros Dinámico -->
+                    <div class="flex items-center glass-inset px-2.5 py-1 rounded-xl shadow-inner border border-gray-600/50 focus-within:border-indigo-500 transition-colors shrink-0">
+                        <span class="text-gray-400 text-xs mr-1">🎭</span>
+                        <select id="genreFilterSelect" class="bg-transparent text-xs text-gray-300 font-bold focus:outline-none cursor-pointer py-0.5 max-w-[150px] sm:max-w-none">
+                            <option value="all" class="bg-gray-900 text-gray-300">Todos los géneros</option>
+                        </select>
+                    </div>
+
                     <!-- Filtros de Valoraciones Destacadas (TMDB, IMDb, Mi Nota, Novedades) -->
-                    <div class="flex items-center glass-inset p-0.5 sm:p-1 rounded-xl gap-1 shadow-inner shrink-0">
+                    <div class="flex items-center glass-inset p-0.5 sm:p-1 rounded-xl gap-1 shadow-inner shrink-0 ml-auto">
                         <button id="btnFilterNovedades" class="hidden px-2 sm:px-3 py-1 sm:py-1.5 rounded-lg text-[11px] md:text-xs font-bold transition-all bg-pink-950/40 text-pink-400 border border-pink-800/50 flex items-center gap-1 animate-pulse">
                             <span class="text-sm md:text-xl">🔥</span> <span class="hidden sm:inline">Novedades</span><span class="sm:hidden">Nuevos</span>
                         </button>
                         <button id="btnFilterRating" class="px-2 sm:px-3 py-1 sm:py-1.5 rounded-lg text-[11px] md:text-xs font-bold transition-all bg-transparent text-gray-400 hover:bg-white/5 flex items-center gap-1">
                             <span class="text-sm md:text-xl text-yellow-400">⭐</span> <span class="hidden sm:inline">TMDB 8+</span><span class="sm:hidden">8+</span>
                         </button>
-                        <!-- NUEVO FILTRO IMDB 8+ -->
                         <button id="btnFilterImdbRating" class="px-2 sm:px-3 py-1 sm:py-1.5 rounded-lg text-[11px] md:text-xs font-bold transition-all bg-transparent text-gray-400 hover:bg-white/5 flex items-center gap-1">
                             <span class="text-sm md:text-xl text-amber-400">🎬</span> <span class="hidden sm:inline">IMDb 8+</span><span class="sm:hidden">IMDb</span>
                         </button>
