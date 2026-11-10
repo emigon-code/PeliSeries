@@ -23,6 +23,7 @@ let filterImdbRating8Plus = false;
 let filterMyRating8Plus = false; 
 let filterNovedades = false; 
 let currentGenreFilter = 'all'; 
+let currentSagaFilter = 'all'; 
 let currentSort = 'recent'; 
 let currentSearchSort = 'rating'; 
 let localSearchQuery = ''; 
@@ -67,6 +68,7 @@ const detailRating = document.getElementById('detailRating');
 const detailImdbRating = document.getElementById('detailImdbRating'); 
 const detailRuntime = document.getElementById('detailRuntime'); 
 const detailGenres = document.getElementById('detailGenres'); 
+const detailSaga = document.getElementById('detailSaga'); 
 const detailExtraInfo = document.getElementById('detailExtraInfo'); 
 const detailPersonalRating = document.getElementById('detailPersonalRating');
 const miValoracionContenedor = document.getElementById('miValoracionContenedor');
@@ -85,6 +87,7 @@ const modalPersona = document.getElementById('modalPersona');
 const btnFilterNovedades = document.getElementById('btnFilterNovedades');
 const btnFilterImdbRating = document.getElementById('btnFilterImdbRating');
 const genreFilterSelect = document.getElementById('genreFilterSelect');
+const sagaFilterSelect = document.getElementById('sagaFilterSelect');
 
 // --- AUTENTICACIÓN ---
 async function iniciarSesion() {
@@ -208,14 +211,14 @@ function exportarAExcel() {
         return {
             'Título': item.title, 'Tipo': item.type === 'movie' ? 'Película' : 'Serie', 'Estado': estadoFormateado,
             'Mi Nota': (registro.personal_rating && registro.personal_rating > 0) ? registro.personal_rating : 'Sin nota',
-            'Nota TMDB': details.rating || 'N/A', 'Nota IMDb': details.rating_imdb || 'N/A', 'Año': details.year || 'N/A', 'Géneros': details.genres || 'N/A', 'Capítulos Vistos': progresoCapitulos,
+            'Nota TMDB': details.rating || 'N/A', 'Nota IMDb': details.rating_imdb || 'N/A', 'Año': details.year || 'N/A', 'Saga / Colección': details.saga || 'N/A', 'Géneros': details.genres || 'N/A', 'Capítulos Vistos': progresoCapitulos,
             'Siguiente Episodio': details.next_episode || 'N/A', 'Temporadas': item.type === 'tv' ? (details.seasons_count || 0) : 'N/A',
             'Estado Emisión': item.type === 'tv' ? (details.is_ended ? 'Finalizada' : 'En emisión') : 'N/A',
             'Sinopsis': details.overview || '', 'TMDB ID': item.tmdb_id
         };
     });
     const hoja = XLSX.utils.json_to_sheet(datosFormateados);
-    hoja['!cols'] = [ {wch: 32}, {wch: 10}, {wch: 12}, {wch: 10}, {wch: 12}, {wch: 12}, {wch: 8}, {wch: 22}, {wch: 18}, {wch: 18}, {wch: 12}, {wch: 15}, {wch: 55}, {wch: 10} ];
+    hoja['!cols'] = [ {wch: 32}, {wch: 10}, {wch: 12}, {wch: 10}, {wch: 12}, {wch: 12}, {wch: 8}, {wch: 22}, {wch: 22}, {wch: 18}, {wch: 12}, {wch: 15}, {wch: 55}, {wch: 10} ];
     const libro = XLSX.utils.book_new(); XLSX.utils.book_append_sheet(libro, hoja, "Mi Lista");
     XLSX.writeFile(libro, `PeliSeries_MiLista_${new Date().toISOString().slice(0, 10)}.xlsx`);
 }
@@ -232,6 +235,23 @@ function obtenerBandera(codigos) {
     if (typeof code !== 'string') return '';
     const flag = code.trim().toUpperCase().replace(/./g, char => String.fromCodePoint(char.charCodeAt(0) + 127397));
     return `${flag} ${code.trim()}`;
+}
+
+// --- ACCIONES DIRECTAS DE NAVEGACIÓN DESDE EL MODAL DETALLE ---
+function filtrarPorGeneroDirecto(genero) {
+    cerrarModalDetalle();
+    if (viewList.classList.contains('hidden')) btnNavList.click();
+    currentGenreFilter = genero;
+    if (genreFilterSelect) genreFilterSelect.value = genero;
+    aplicarFiltrosYDiseño();
+}
+
+function filtrarPorSagaDirecta(saga) {
+    cerrarModalDetalle();
+    if (viewList.classList.contains('hidden')) btnNavList.click();
+    currentSagaFilter = saga;
+    if (sagaFilterSelect) sagaFilterSelect.value = saga;
+    aplicarFiltrosYDiseño();
 }
 
 // --- BUSCADOR ---
@@ -317,9 +337,18 @@ function updateBtnClassesMulti(selector, activeArray, dataAttr) {
 }
 
 localSearchInput.addEventListener('input', (e) => { localSearchQuery = e.target.value.toLowerCase().trim(); aplicarFiltrosYDiseño(); });
+
 if (genreFilterSelect) {
     genreFilterSelect.addEventListener('change', (e) => { 
         currentGenreFilter = e.target.value; 
+        aplicarFiltrosYDiseño(); 
+        e.target.blur(); 
+    });
+}
+
+if (sagaFilterSelect) {
+    sagaFilterSelect.addEventListener('change', (e) => { 
+        currentSagaFilter = e.target.value; 
         aplicarFiltrosYDiseño(); 
         e.target.blur(); 
     });
@@ -428,12 +457,39 @@ function actualizarOpcionesSelectorGeneros() {
     if (!generosUnicos.has(currentGenreFilter)) currentGenreFilter = 'all';
 }
 
+function actualizarOpcionesSelectorSagas() {
+    if (!sagaFilterSelect) return;
+    const sagasUnicas = new Set();
+    miBibliotecaLocal.forEach(r => {
+        if (r.details && r.details.saga) {
+            sagasUnicas.add(r.details.saga.trim());
+        }
+    });
+
+    const listaOrdenada = Array.from(sagasUnicas).sort();
+    const claveSagas = listaOrdenada.join('|');
+
+    if (sagaFilterSelect.dataset.lastSagas === claveSagas) {
+        sagaFilterSelect.value = sagasUnicas.has(currentSagaFilter) ? currentSagaFilter : 'all';
+        return;
+    }
+    sagaFilterSelect.dataset.lastSagas = claveSagas;
+
+    sagaFilterSelect.innerHTML = '<option value="all" class="bg-gray-900 text-gray-300">🪐 Todas las sagas</option>';
+    listaOrdenada.forEach(s => {
+        if (s) sagaFilterSelect.innerHTML += `<option value="${s}" class="bg-gray-900 text-gray-300">${s}</option>`;
+    });
+
+    sagaFilterSelect.value = sagasUnicas.has(currentSagaFilter) ? currentSagaFilter : 'all';
+    if (!sagasUnicas.has(currentSagaFilter)) currentSagaFilter = 'all';
+}
+
 async function cargarMiLista() {
     if (!usuarioActual) return;
     myListGrid.innerHTML = '<p class="text-indigo-400 col-span-full text-center py-8">Cargando biblioteca personal...</p>';
 
     const { data, error } = await clienteSupabase.from('user_tracking')
-        .select(`*, items ( id, tmdb_id, title, type, poster_path, rating_tmdb, rating_imdb, runtime, country, genres, year, api_updated_at ), user_episodes (season_number, episode_number)`)
+        .select(`*, items ( id, tmdb_id, title, type, poster_path, rating_tmdb, rating_imdb, runtime, country, genres, year, saga, api_updated_at ), user_episodes (season_number, episode_number)`)
         .eq('user_id', usuarioActual.id);
 
     if (error || !data || data.length === 0) { 
@@ -457,6 +513,7 @@ async function cargarMiLista() {
             country: item.country || '',
             genres: item.genres || '',
             year: item.year || '',
+            saga: item.saga || '',
             overview: 'Haz clic para ver detalles.',
             seasons_count: 0,
             is_ended: false,
@@ -465,7 +522,7 @@ async function cargarMiLista() {
 
         const haceSieteDias = new Date(Date.now() - 7 * 24 * 60 * 60 * 1000);
         const estaCaducado = !item.api_updated_at || new Date(item.api_updated_at) < haceSieteDias;
-        if (estaCaducado || item.rating_imdb === null || item.rating_imdb === undefined || item.rating_tmdb === null || !item.genres || !item.year) {
+        if (estaCaducado || item.rating_imdb === null || item.rating_imdb === undefined || item.rating_tmdb === null || !item.genres || !item.year || item.saga === undefined) {
             itemsParaSincronizar.push(registro);
         }
 
@@ -473,6 +530,7 @@ async function cargarMiLista() {
     });
 
     actualizarOpcionesSelectorGeneros();
+    actualizarOpcionesSelectorSagas();
     aplicarFiltrosYDiseño();
 
     if (itemsParaSincronizar.length > 0) {
@@ -501,6 +559,24 @@ async function sincronizarEnSegundoPlano(registros) {
                 let generosStr = tmdbData.genres ? tmdbData.genres.map(g => g.name).join(', ') : '';
                 let rawYear = (tmdbData.release_date || tmdbData.first_air_date || '').substring(0, 4);
 
+                // Detección de Saga o Colección
+                let sagaStr = '';
+                if (tmdbData.belongs_to_collection && tmdbData.belongs_to_collection.name) {
+                    sagaStr = tmdbData.belongs_to_collection.name.replace(/^Colección\s+/i, '');
+                }
+                const tituloLower = (tmdbData.title || tmdbData.name || '').toLowerCase();
+                if (tituloLower.includes('star wars') || tituloLower.includes('mandalorian') || tituloLower.includes('andor') || tituloLower.includes('boba fett') || tituloLower.includes('obi-wan')) {
+                    sagaStr = 'Star Wars';
+                } else if (tituloLower.includes('anillos') || tituloLower.includes('hobbit') || tituloLower.includes('tierra media') || tituloLower.includes('lord of the rings')) {
+                    sagaStr = 'Tolkien / ESDLA';
+                } else if (tituloLower.includes('marvel') || tituloLower.includes('avengers') || tituloLower.includes('spider-man') || tituloLower.includes('thor') || tituloLower.includes('iron man') || tituloLower.includes('captain america') || tituloLower.includes('loki') || tituloLower.includes('wandavision')) {
+                    sagaStr = 'Marvel';
+                } else if (tituloLower.includes('batman') || tituloLower.includes('superman') || tituloLower.includes('dc ') || tituloLower.includes('justice league') || tituloLower.includes('joker') || tituloLower.includes('aquaman') || tituloLower.includes('wonder woman') || tituloLower.includes('peacemaker')) {
+                    sagaStr = 'DC Universe';
+                } else if (tituloLower.includes('harry potter') || tituloLower.includes('animales fantásticos') || tituloLower.includes('fantastic beasts')) {
+                    sagaStr = 'Harry Potter';
+                }
+
                 let ratingImdb = null;
                 let imdbId = tmdbData.imdb_id || (tmdbData.external_ids && tmdbData.external_ids.imdb_id);
 
@@ -521,6 +597,7 @@ async function sincronizarEnSegundoPlano(registros) {
                     country: paisStr,
                     genres: generosStr,
                     year: rawYear,
+                    saga: sagaStr,
                     api_updated_at: new Date().toISOString()
                 }).eq('id', item.id);
 
@@ -532,11 +609,13 @@ async function sincronizarEnSegundoPlano(registros) {
                     miBibliotecaLocal[idx].details.runtime = duracion;
                     miBibliotecaLocal[idx].details.genres = generosStr;
                     miBibliotecaLocal[idx].details.year = rawYear;
+                    miBibliotecaLocal[idx].details.saga = sagaStr;
                 }
             } catch(e) { console.error("Error en petición:", e); }
         }));
 
         actualizarOpcionesSelectorGeneros();
+        actualizarOpcionesSelectorSagas();
         aplicarFiltrosYDiseño();
         await new Promise(r => setTimeout(r, 200));
     }
@@ -570,11 +649,16 @@ function aplicarFiltrosYDiseño() {
             matchGenre = generosItem.includes(currentGenreFilter);
         }
 
+        let matchSaga = true;
+        if (currentSagaFilter !== 'all') {
+            matchSaga = (registro.details.saga || '').trim() === currentSagaFilter.trim();
+        }
+
         let matchMyRating = !filterMyRating8Plus || ((registro.personal_rating || 0) >= 8);
         let matchSearch = localSearchQuery === '' || registro.items.title.toLowerCase().includes(localSearchQuery);
         let matchNovedades = !filterNovedades || registro.has_new_episodes;
         
-        return matchType && matchStatus && matchRating && matchImdbRating && matchGenre && matchMyRating && matchSearch && matchNovedades;
+        return matchType && matchStatus && matchRating && matchImdbRating && matchGenre && matchSaga && matchMyRating && matchSearch && matchNovedades;
     });
 
     dataFiltrada.sort((a, b) => {
@@ -603,6 +687,7 @@ function pintarMiLista(dataArray) {
             : `<span class="bg-amber-950/90 text-amber-300 border border-amber-700/60 px-2 py-0.5 rounded-md text-[9px] font-black uppercase tracking-widest">📺 Serie</span>`;
 
         const yearBadge = details.year ? `<span class="ml-1 text-gray-400 text-xs font-normal">(${details.year})</span>` : '';
+        const sagaBadge = details.saga ? `<span class="text-[10px] text-amber-300 font-bold block truncate mt-0.5">🪐 ${details.saga}</span>` : '';
         const genresBadge = details.genres ? `<span class="text-[10px] text-purple-300/80 font-medium block truncate mt-0.5">🎭 ${details.genres}</span>` : '';
         const runtimeBadge = (isMovie && details.runtime) ? `<span class="text-[10px] text-gray-400 font-medium block">⏳ ${details.runtime} min</span>` : '';
 
@@ -651,6 +736,7 @@ function pintarMiLista(dataArray) {
                     ${runtimeBadge}
                 </div>
                 <h3 class="font-bold text-sm leading-snug mb-0.5 line-clamp-2 group-hover:text-indigo-300 transition-colors">${item.title} ${yearBadge}</h3>
+                ${sagaBadge}
                 ${genresBadge}
                 ${badgeSerie}
                 ${badgeNextEpisode}
@@ -677,6 +763,7 @@ async function cargarDatosAvanzados(tmdb_id, tipo) {
     detailCountry.textContent = ''; 
     detailRuntime.classList.add('hidden'); 
     detailGenres.classList.add('hidden');
+    detailSaga.classList.add('hidden');
     detailExtraInfo.classList.add('hidden'); 
     detailExtraInfo.innerHTML = '';
 
@@ -689,9 +776,41 @@ async function cargarDatosAvanzados(tmdb_id, tipo) {
         const yearStr = (dataFull.release_date || dataFull.first_air_date || '').substring(0, 4);
         if (yearStr) detailYear.textContent = `(${yearStr})`;
 
+        // Hipervínculos interactivos para Géneros
         if (dataFull.genres && dataFull.genres.length > 0) {
-            detailGenres.textContent = `🎭 ${dataFull.genres.map(g => g.name).join(', ')}`;
+            detailGenres.innerHTML = dataFull.genres.map(g => `
+                <button onclick="filtrarPorGeneroDirecto('${g.name.replace(/'/g, "\\'")}')" class="bg-purple-950/80 hover:bg-purple-800 text-purple-200 border border-purple-700/60 px-2.5 py-1 rounded-lg text-xs font-bold transition-all shadow-sm flex items-center gap-1 hover:scale-105 cursor-pointer">
+                    🎭 ${g.name}
+                </button>
+            `).join('');
             detailGenres.classList.remove('hidden');
+        }
+
+        // Hipervínculo interactivo para Saga
+        let sagaStr = '';
+        if (dataFull.belongs_to_collection && dataFull.belongs_to_collection.name) {
+            sagaStr = dataFull.belongs_to_collection.name.replace(/^Colección\s+/i, '');
+        }
+        const tituloLower = (dataFull.title || dataFull.name || '').toLowerCase();
+        if (tituloLower.includes('star wars') || tituloLower.includes('mandalorian') || tituloLower.includes('andor') || tituloLower.includes('boba fett') || tituloLower.includes('obi-wan')) {
+            sagaStr = 'Star Wars';
+        } else if (tituloLower.includes('anillos') || tituloLower.includes('hobbit') || tituloLower.includes('tierra media') || tituloLower.includes('lord of the rings')) {
+            sagaStr = 'Tolkien / ESDLA';
+        } else if (tituloLower.includes('marvel') || tituloLower.includes('avengers') || tituloLower.includes('spider-man') || tituloLower.includes('thor') || tituloLower.includes('iron man') || tituloLower.includes('captain america') || tituloLower.includes('loki') || tituloLower.includes('wandavision')) {
+            sagaStr = 'Marvel';
+        } else if (tituloLower.includes('batman') || tituloLower.includes('superman') || tituloLower.includes('dc ') || tituloLower.includes('justice league') || tituloLower.includes('joker') || tituloLower.includes('aquaman') || tituloLower.includes('wonder woman') || tituloLower.includes('peacemaker')) {
+            sagaStr = 'DC Universe';
+        } else if (tituloLower.includes('harry potter') || tituloLower.includes('animales fantásticos') || tituloLower.includes('fantastic beasts')) {
+            sagaStr = 'Harry Potter';
+        }
+
+        if (sagaStr) {
+            detailSaga.innerHTML = `
+                <button onclick="filtrarPorSagaDirecta('${sagaStr.replace(/'/g, "\\'")}')" class="bg-amber-950/90 hover:bg-amber-800 text-amber-200 border border-amber-700/70 px-3 py-1 rounded-lg text-xs font-bold transition-all shadow-sm flex items-center gap-1 hover:scale-105 cursor-pointer">
+                    🪐 Saga: ${sagaStr}
+                </button>
+            `;
+            detailSaga.classList.remove('hidden');
         }
 
         let duracion = dataFull.runtime || (dataFull.episode_run_time && dataFull.episode_run_time[0]);
@@ -860,11 +979,28 @@ function abrirModalDetalleDesdeLista(tracking_id) {
     detailPoster.src = item.poster_path ? `https://image.tmdb.org/t/p/w500${item.poster_path}` : 'https://via.placeholder.com/500x750/1f2937/ffffff?text=Sin+Poster';
     detailRating.textContent = `⭐ ${details.rating}`;
 
+    // Géneros interactivos desde datos locales
     if (details.genres) {
-        detailGenres.textContent = `🎭 ${details.genres}`;
+        detailGenres.innerHTML = details.genres.split(',').map(g => `
+            <button onclick="filtrarPorGeneroDirecto('${g.trim().replace(/'/g, "\\'")}')" class="bg-purple-950/80 hover:bg-purple-800 text-purple-200 border border-purple-700/60 px-2.5 py-1 rounded-lg text-xs font-bold transition-all shadow-sm flex items-center gap-1 hover:scale-105 cursor-pointer">
+                🎭 ${g.trim()}
+            </button>
+        `).join('');
         detailGenres.classList.remove('hidden');
     } else {
         detailGenres.classList.add('hidden');
+    }
+
+    // Saga interactiva desde datos locales
+    if (details.saga) {
+        detailSaga.innerHTML = `
+            <button onclick="filtrarPorSagaDirecta('${details.saga.replace(/'/g, "\\'")}')" class="bg-amber-950/90 hover:bg-amber-800 text-amber-200 border border-amber-700/70 px-3 py-1 rounded-lg text-xs font-bold transition-all shadow-sm flex items-center gap-1 hover:scale-105 cursor-pointer">
+                🪐 Saga: ${details.saga}
+            </button>
+        `;
+        detailSaga.classList.remove('hidden');
+    } else {
+        detailSaga.classList.add('hidden');
     }
     
     if (details.rating_imdb && details.rating_imdb !== 'N/A') {
