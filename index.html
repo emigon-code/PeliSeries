@@ -44,7 +44,7 @@
             </div>
         </header>
 
-        <!-- PANEL DE AUTENTICACIÓN MULTIUSUARIO -->
+        <!-- PANEL DE AUTENTICACIÓN -->
         <div id="authPanel" class="max-w-sm mx-auto mb-10 glass-panel p-8 rounded-3xl mt-16">
             <div class="text-center mb-8">
                 <h2 class="text-2xl font-black text-white mb-2">Bienvenido</h2>
@@ -88,16 +88,23 @@
         <div id="viewList">
             <div class="sticky top-2 z-30 glass-panel p-2 md:p-3.5 rounded-2xl mb-6 flex flex-col gap-2 shadow-2xl backdrop-blur-xl border border-white/10">
                 <div class="flex flex-row items-center justify-between gap-2">
+                    <!-- Buscador Local -->
                     <div class="flex items-center glass-inset px-2.5 py-1 rounded-xl shadow-inner flex-grow sm:flex-grow-0 sm:w-64 border border-gray-600/50 focus-within:border-indigo-500 transition-colors">
                         <span class="text-gray-400 text-sm md:text-lg mr-1.5">🔍</span>
                         <input type="text" id="localSearchInput" placeholder="Buscar en mi lista..." class="bg-transparent text-xs md:text-sm text-white font-semibold focus:outline-none w-full py-0.5 placeholder-gray-500">
                     </div>
+
+                    <!-- Filtros de Valoraciones Destacadas (TMDB, IMDb, Mi Nota, Novedades) -->
                     <div class="flex items-center glass-inset p-0.5 sm:p-1 rounded-xl gap-1 shadow-inner shrink-0">
                         <button id="btnFilterNovedades" class="hidden px-2 sm:px-3 py-1 sm:py-1.5 rounded-lg text-[11px] md:text-xs font-bold transition-all bg-pink-950/40 text-pink-400 border border-pink-800/50 flex items-center gap-1 animate-pulse">
                             <span class="text-sm md:text-xl">🔥</span> <span class="hidden sm:inline">Novedades</span><span class="sm:hidden">Nuevos</span>
                         </button>
                         <button id="btnFilterRating" class="px-2 sm:px-3 py-1 sm:py-1.5 rounded-lg text-[11px] md:text-xs font-bold transition-all bg-transparent text-gray-400 hover:bg-white/5 flex items-center gap-1">
                             <span class="text-sm md:text-xl text-yellow-400">⭐</span> <span class="hidden sm:inline">TMDB 8+</span><span class="sm:hidden">8+</span>
+                        </button>
+                        <!-- NUEVO FILTRO IMDB 8+ -->
+                        <button id="btnFilterImdbRating" class="px-2 sm:px-3 py-1 sm:py-1.5 rounded-lg text-[11px] md:text-xs font-bold transition-all bg-transparent text-gray-400 hover:bg-white/5 flex items-center gap-1">
+                            <span class="text-sm md:text-xl text-amber-400">🎬</span> <span class="hidden sm:inline">IMDb 8+</span><span class="sm:hidden">IMDb</span>
                         </button>
                         <button id="btnFilterMyRating" class="px-2 sm:px-3 py-1 sm:py-1.5 rounded-lg text-[11px] md:text-xs font-bold transition-all bg-transparent text-gray-400 hover:bg-white/5 flex items-center gap-1">
                             <span class="text-sm md:text-xl text-blue-400">★</span> <span class="hidden sm:inline">Mi Nota 8+</span><span class="sm:hidden">Mi 8+</span>
@@ -109,12 +116,8 @@
 
                 <div class="flex flex-wrap items-center justify-between gap-1.5 md:gap-2">
                     <div class="flex items-center glass-inset p-0.5 sm:p-1 rounded-xl gap-0.5 sm:gap-1 shadow-inner">
-                        <button data-filter-type="movie" class="filter-type-btn px-2 sm:px-3 py-1 sm:py-1.5 rounded-lg text-[11px] sm:text-xs font-bold transition-all bg-gradient-to-r from-indigo-500 to-purple-600 text-white shadow-md flex items-center gap-1">
-                            <span class="text-sm md:text-xl">🍿</span> <span class="text-[11px] md:text-xs">Pelis</span>
-                        </button>
-                        <button data-filter-type="tv" class="filter-type-btn px-2 sm:px-3 py-1 sm:py-1.5 rounded-lg text-[11px] sm:text-xs font-bold transition-all bg-gradient-to-r from-indigo-500 to-purple-600 text-white shadow-md flex items-center gap-1">
-                            <span class="text-sm md:text-xl">📺</span> <span class="text-[11px] md:text-xs">Series</span>
-                        </button>
+                        <button data-filter-type="movie" class="filter-type-btn px-2 sm:px-3 py-1 sm:py-1.5 rounded-lg text-[11px] sm:text-xs font-bold transition-all bg-gradient-to-r from-indigo-500 to-purple-600 text-white shadow-md flex items-center gap-1">🍿 <span class="text-[11px] md:text-xs">Pelis</span></button>
+                        <button data-filter-type="tv" class="filter-type-btn px-2 sm:px-3 py-1 sm:py-1.5 rounded-lg text-[11px] sm:text-xs font-bold transition-all bg-gradient-to-r from-indigo-500 to-purple-600 text-white shadow-md flex items-center gap-1">📺 <span class="text-[11px] md:text-xs">Series</span></button>
                     </div>
                     <div class="flex items-center glass-inset p-0.5 sm:p-1 rounded-xl gap-0.5 sm:gap-1 shadow-inner">
                         <button data-filter-status="all" class="filter-status-btn px-2 sm:px-2.5 py-1 sm:py-1.5 rounded-lg text-[11px] sm:text-xs font-bold transition-all bg-gradient-to-r from-indigo-500 to-purple-600 text-white shadow-md flex items-center gap-1">♾️ <span class="hidden md:inline text-xs">Todos</span></button>
@@ -133,7 +136,7 @@
         </div>
     </div>
 
-    <!-- MODAL DE BÚSQUEDA EN BLOQUE -->
+    <!-- MODAL IMPORTACIÓN EN BLOQUE -->
     <div id="modalImport" class="hidden fixed inset-0 bg-black/90 flex justify-center items-center p-4 z-50 backdrop-blur-sm">
         <div class="bg-gray-800 rounded-3xl w-full max-w-xl flex flex-col shadow-2xl border border-gray-700 overflow-hidden">
             <div class="p-5 border-b border-gray-700 flex justify-between items-center bg-gray-800/80">
@@ -167,13 +170,10 @@
                     <div class="flex flex-col flex-grow">
                         <h2 id="detailTitle" class="text-2xl lg:text-3xl font-bold text-white mb-2"></h2>
                         <div class="flex flex-wrap items-center gap-2 sm:gap-3 text-sm text-gray-300 mb-4">
-                            
-                            <!-- NUEVOS BADGES: TMDB, IMDb, Duración -->
                             <span id="detailRating" class="bg-yellow-500/20 text-yellow-400 px-2.5 py-1 rounded-lg font-bold border border-yellow-500/30">⭐ 0.0</span>
                             <span id="detailImdbRating" class="hidden bg-gray-800/80 text-gray-300 px-2.5 py-1 rounded-lg font-bold border border-gray-600 shadow-sm flex items-center gap-1">🎬 IMDb: N/A</span>
                             <span id="detailRuntime" class="hidden bg-indigo-950/40 text-indigo-300 px-2.5 py-1 rounded-lg font-bold border border-indigo-800/50 shadow-sm">⏳ N/A</span>
                             
-                            <!-- Mi Valoración -->
                             <div id="miValoracionContenedor" class="hidden items-center gap-2 bg-blue-900/20 border border-blue-500/30 px-2.5 py-1 rounded-lg">
                                 <span class="text-xs font-bold text-blue-400 uppercase tracking-widest">Mi Nota:</span>
                                 <select id="detailPersonalRating" onchange="cambiarNotaPersonal(this.value)" class="bg-transparent text-blue-300 text-sm font-bold outline-none cursor-pointer">
@@ -191,7 +191,6 @@
                         <h3 class="text-xs font-black uppercase text-gray-500 mb-1 tracking-wider">Sinopsis</h3>
                         <p id="detailOverview" class="text-gray-300 text-sm leading-relaxed mb-4"></p>
                         
-                        <!-- NUEVA CAJA DE DATOS EXTRA (OMDb) -->
                         <div id="detailExtraInfo" class="hidden text-[11px] sm:text-xs text-gray-400 mb-4 bg-gray-900/60 p-3 sm:p-4 rounded-xl border border-gray-700/50 shadow-inner flex flex-col gap-1.5"></div>
 
                         <div id="detailCredits" class="flex flex-col gap-2 mt-2 p-4 bg-gray-900/50 rounded-2xl border border-gray-700/50"></div>
@@ -199,7 +198,6 @@
                     </div>
                 </div>
 
-                <!-- CONTENEDOR DE EPISODIOS -->
                 <div id="detailSeasonsWrapper" class="hidden flex-col gap-3 mt-4 pt-6 border-t border-gray-700/80">
                     <div class="flex justify-between items-center mb-2">
                         <h3 class="text-xs font-black uppercase text-gray-500 tracking-wider">Temporadas y Episodios</h3>
@@ -208,7 +206,6 @@
                     <div id="detailSeasonsContent" class="flex flex-col"></div>
                 </div>
 
-                <!-- RECOMENDACIONES -->
                 <div class="pt-6 mt-6 border-t border-gray-700/80">
                     <h3 class="text-[10px] font-black uppercase text-gray-500 mb-3 tracking-wider">Títulos similares</h3>
                     <div id="detailRecommendations" class="flex gap-3 overflow-x-auto custom-scrollbar pb-3"></div>
