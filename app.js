@@ -19,6 +19,7 @@ let currentDetailTrackingId = null;
 let filterTypes = ['movie', 'tv']; 
 let currentFilterStatus = 'all';
 let filterRating8Plus = false; 
+let filterImdbRating8Plus = false; // NUEVO FILTRO IMDB 8+
 let filterMyRating8Plus = false; 
 let filterNovedades = false; 
 let currentSort = 'recent'; 
@@ -80,6 +81,7 @@ const btnMarcarSerieDetalle = document.getElementById('btnMarcarSerieDetalle');
 
 const modalPersona = document.getElementById('modalPersona');
 const btnFilterNovedades = document.getElementById('btnFilterNovedades');
+const btnFilterImdbRating = document.getElementById('btnFilterImdbRating');
 
 // --- AUTENTICACIÓN ---
 async function iniciarSesion() {
@@ -319,12 +321,19 @@ document.querySelectorAll('.filter-status-btn').forEach(btn => {
         updateBtnClassesSingle('.filter-status-btn', currentFilterStatus, 'data-filter-status'); aplicarFiltrosYDiseño();
     });
 });
+
 document.getElementById('btnFilterRating').addEventListener('click', (e) => {
     filterRating8Plus = !filterRating8Plus; e.currentTarget.className = filterRating8Plus ? btnPillActive : btnPillInactive; aplicarFiltrosYDiseño();
 });
+
+btnFilterImdbRating.addEventListener('click', (e) => {
+    filterImdbRating8Plus = !filterImdbRating8Plus; e.currentTarget.className = filterImdbRating8Plus ? btnPillActive : btnPillInactive; aplicarFiltrosYDiseño();
+});
+
 document.getElementById('btnFilterMyRating').addEventListener('click', (e) => {
     filterMyRating8Plus = !filterMyRating8Plus; e.currentTarget.className = filterMyRating8Plus ? btnPillActive : btnPillInactive; aplicarFiltrosYDiseño();
 });
+
 btnFilterNovedades.addEventListener('click', () => { filterNovedades = !filterNovedades; aplicarFiltrosYDiseño(); });
 document.querySelectorAll('.sort-btn').forEach(btn => {
     btn.addEventListener('click', (e) => {
@@ -354,7 +363,7 @@ async function borrarDeMiLista(tracking_id, tmdb_id, titulo) {
     }
 }
 
-// --- MI LISTA CON CACHÉ LOCAL Y SINCRONIZACIÓN EN SEGUNDO PLANO ---
+// --- MI LISTA CON CACHÉ Y OBTENCIÓN INMEDIATA ---
 function calcularTotalCapitulosOficiales(seasonsData) {
     if (!seasonsData) return 0;
     return seasonsData.filter(s => s.season_number > 0).reduce((acc, s) => acc + s.episode_count, 0);
@@ -379,54 +388,69 @@ async function cargarMiLista() {
     if (!usuarioActual) return;
     myListGrid.innerHTML = '<p class="text-indigo-400 col-span-full text-center py-8">Cargando biblioteca personal...</p>';
 
-    // Consulta extendida pidiendo las nuevas columnas guardadas en la tabla items
     const { data, error } = await clienteSupabase.from('user_tracking')
         .select(`*, items ( id, tmdb_id, title, type, poster_path, rating_tmdb, rating_imdb, runtime, country, api_updated_at ), user_episodes (season_number, episode_number)`)
         .eq('user_id', usuarioActual.id);
 
-    if (error || data.length === 0) { 
+    if (error || !data || data.length === 0) { 
         miBibliotecaLocal = []; 
         return myListGrid.innerHTML = '<p class="text-gray-400 col-span-full text-center py-8">Aún no has guardado elementos.</p>'; 
     }
 
-    const itemsParaActualizar = [];
+    const itemsParaSincronizar = [];
 
-    // Carga ULTRA-RÁPIDA desde Supabase (0,1 segundos)
-    miBibliotecaLocal = data.map(registro => {
+    // Procesamiento rápido
+    miBibliotecaLocal = await Promise.all(data.map(async (registro) => {
         const item = registro.items;
         
+        let ratingTmdbStr = (item.rating_tmdb !== null && item.rating_tmdb !== undefined) 
+            ? Number(item.rating_tmdb).toFixed(1) 
+            : null;
+
+        // Si rating_tmdb no está aún en Supabase, lo traemos YA para evitar 'N/A'
+        if (!ratingTmdbStr) {
+            try {
+                const endpoint = item.type === 'movie' ? `movie/${item.tmdb_id}` : `tv/${item.tmdb_id}`;
+                const res = await fetch(`https://api.themoviedb.org/3/${endpoint}?language=es-ES`, { headers: { Authorization: `Bearer ${TMDB_TOKEN}` } });
+                if (res.ok) {
+                    const tmdbData = await res.json();
+                    if (tmdbData.vote_average) {
+                        ratingTmdbStr = tmdbData.vote_average.toFixed(1);
+                        clienteSupabase.from('items').update({ rating_tmdb: tmdbData.vote_average }).eq('id', item.id);
+                    }
+                }
+            } catch(e) {}
+        }
+
         registro.details = {
-            rating: item.rating_tmdb ? item.rating_tmdb.toFixed(1) : 'N/A',
-            rating_imdb: item.rating_imdb ? item.rating_imdb.toFixed(1) : null,
+            rating: ratingTmdbStr || 'N/A',
+            rating_imdb: (item.rating_imdb !== null && item.rating_imdb !== undefined) ? Number(item.rating_imdb).toFixed(1) : null,
             runtime: item.runtime || null,
             country: item.country || '',
-            overview: 'Haz clic para cargar detalles completos.',
+            overview: 'Haz clic para ver detalles.',
             seasons_count: 0,
             is_ended: false,
             seasons_data: [],
             year: ''
         };
 
-        // Comprobamos si necesita actualizarse en segundo plano (si nunca se ha guardado o tiene más de 7 días)
         const haceSieteDias = new Date(Date.now() - 7 * 24 * 60 * 60 * 1000);
         const estaCaducado = !item.api_updated_at || new Date(item.api_updated_at) < haceSieteDias;
-        if (estaCaducado || !item.rating_imdb) {
-            itemsParaActualizar.push(registro);
+        if (estaCaducado || item.rating_imdb === null || item.rating_imdb === undefined) {
+            itemsParaSincronizar.push(registro);
         }
 
         return registro;
-    });
+    }));
 
-    // Mostramos la lista inmediatamente en pantalla
     aplicarFiltrosYDiseño();
 
-    // Iniciamos la sincronización gradual en segundo plano sin congelar la pantalla
-    if (itemsParaActualizar.length > 0) {
-        sincronizarEnSegundoPlano(itemsParaActualizar);
+    if (itemsParaSincronizar.length > 0) {
+        sincronizarEnSegundoPlano(itemsParaSincronizar);
     }
 }
 
-// Proceso de sincronización paulatina (1 petición cada 1.5s para no bloquear la API)
+// Sincronización en segundo plano con OMDb y TMDB
 async function sincronizarEnSegundoPlano(registros) {
     for (const reg of registros) {
         const item = reg.items;
@@ -444,7 +468,6 @@ async function sincronizarEnSegundoPlano(registros) {
             let ratingImdb = null;
             let imdbId = tmdbData.imdb_id || (tmdbData.external_ids && tmdbData.external_ids.imdb_id);
 
-            // Consulta a OMDb solo si falta o caducó
             if (imdbId && OMDB_TOKEN && OMDB_TOKEN.trim() !== '' && OMDB_TOKEN !== 'TU_CLAVE_OMDB') {
                 try {
                     const omdbRes = await fetch(`https://www.omdbapi.com/?i=${imdbId}&apikey=${OMDB_TOKEN.trim()}`);
@@ -455,7 +478,6 @@ async function sincronizarEnSegundoPlano(registros) {
                 } catch(e) {}
             }
 
-            // Guardamos las notas y datos técnicos en Supabase para futuras aperturas instantáneas
             await clienteSupabase.from('items').update({
                 rating_tmdb: ratingTmdb,
                 rating_imdb: ratingImdb,
@@ -464,7 +486,6 @@ async function sincronizarEnSegundoPlano(registros) {
                 api_updated_at: new Date().toISOString()
             }).eq('id', item.id);
 
-            // Actualizamos la memoria de la app y refrescamos la vista suavemente
             const idx = miBibliotecaLocal.findIndex(r => r.id === reg.id);
             if (idx > -1) {
                 if (ratingTmdb) miBibliotecaLocal[idx].details.rating = ratingTmdb.toFixed(1);
@@ -474,8 +495,7 @@ async function sincronizarEnSegundoPlano(registros) {
             }
             aplicarFiltrosYDiseño();
 
-            // Pausa de seguridad entre llamadas
-            await new Promise(r => setTimeout(r, 1500));
+            await new Promise(r => setTimeout(r, 800));
 
         } catch(e) { console.error("Error actualizando en segundo plano", e); }
     }
@@ -496,10 +516,19 @@ function aplicarFiltrosYDiseño() {
         const matchType = filterTypes.includes(registro.items.type);
         const matchStatus = currentFilterStatus === 'all' || registro.status === currentFilterStatus;
         let matchRating = !filterRating8Plus || (parseFloat(registro.details.rating) >= 8);
+        
+        // Evaluación del filtro IMDb 8+
+        let matchImdbRating = true;
+        if (filterImdbRating8Plus) {
+            const rImdb = parseFloat(registro.details.rating_imdb);
+            if (isNaN(rImdb) || rImdb < 8) matchImdbRating = false;
+        }
+
         let matchMyRating = !filterMyRating8Plus || ((registro.personal_rating || 0) >= 8);
         let matchSearch = localSearchQuery === '' || registro.items.title.toLowerCase().includes(localSearchQuery);
         let matchNovedades = !filterNovedades || registro.has_new_episodes;
-        return matchType && matchStatus && matchRating && matchMyRating && matchSearch && matchNovedades;
+        
+        return matchType && matchStatus && matchRating && matchImdbRating && matchMyRating && matchSearch && matchNovedades;
     });
 
     dataFiltrada.sort((a, b) => {
@@ -526,10 +555,10 @@ function pintarMiLista(dataArray) {
         const miNotaBadge = (registro.personal_rating > 0) 
             ? `<span class="absolute top-2 left-2 bg-blue-900/90 backdrop-blur-md text-blue-300 text-[11px] font-black px-2 py-1 rounded-lg border border-blue-500/50 shadow-md shadow-blue-900/50">★ ${registro.personal_rating}</span>` : '';
 
-        // Badge de IMDb directamente en las tarjetas principales
+        // Badge de IMDb en las carátulas de portada
         const imdbBadge = details.rating_imdb 
-            ? `<span class="bg-gray-900/90 backdrop-blur-md text-gray-200 text-[10px] font-bold px-1.5 py-0.5 rounded-md border border-gray-600 shadow-md">🎬 ${details.rating_imdb}</span>`
-            : '';
+            ? `<span class="bg-black/80 backdrop-blur-md text-amber-300 text-[10px] font-bold px-2 py-1 rounded-lg border border-amber-500/30 shadow-md">🎬 ${details.rating_imdb}</span>`
+            : `<span class="bg-black/60 backdrop-blur-md text-gray-400 text-[10px] font-bold px-2 py-1 rounded-lg border border-gray-700/50 shadow-md">🎬 --</span>`;
 
         if (item.type === 'tv') {
             const estadoTexto = details.is_ended ? '🔴 Fin' : '🟢 Emisión';
@@ -556,7 +585,7 @@ function pintarMiLista(dataArray) {
             <div class="relative aspect-[2/3] overflow-hidden bg-gray-950">
                 <img src="${imgUrl}" alt="${item.title}" class="w-full h-full object-cover group-hover:scale-105 transition-transform duration-300">
                 ${miNotaBadge}
-                <!-- Doble puntuación en portada: TMDB e IMDb -->
+                <!-- Doble insignia en la esquina superior derecha -->
                 <div class="absolute top-2 right-2 flex flex-col items-end gap-1">
                     <span class="bg-black/80 backdrop-blur-md text-yellow-400 text-[10px] font-bold px-2 py-1 rounded-lg border border-yellow-500/20 shadow-md">⭐ ${details.rating}</span>
                     ${imdbBadge}
