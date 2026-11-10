@@ -19,7 +19,7 @@ let currentDetailTrackingId = null;
 let filterTypes = ['movie', 'tv']; 
 let currentFilterStatus = 'all';
 let filterRating8Plus = false; 
-let filterImdbRating8Plus = false; // NUEVO FILTRO IMDB 8+
+let filterImdbRating8Plus = false; 
 let filterMyRating8Plus = false; 
 let filterNovedades = false; 
 let currentSort = 'recent'; 
@@ -363,7 +363,7 @@ async function borrarDeMiLista(tracking_id, tmdb_id, titulo) {
     }
 }
 
-// --- MI LISTA CON CACHÉ Y OBTENCIÓN INMEDIATA ---
+// --- MI LISTA CON CACHÉ Y SINCRONIZACIÓN EN PARALELO ---
 function calcularTotalCapitulosOficiales(seasonsData) {
     if (!seasonsData) return 0;
     return seasonsData.filter(s => s.season_number > 0).reduce((acc, s) => acc + s.episode_count, 0);
@@ -399,31 +399,15 @@ async function cargarMiLista() {
 
     const itemsParaSincronizar = [];
 
-    // Procesamiento rápido
-    miBibliotecaLocal = await Promise.all(data.map(async (registro) => {
+    miBibliotecaLocal = data.map(registro => {
         const item = registro.items;
         
         let ratingTmdbStr = (item.rating_tmdb !== null && item.rating_tmdb !== undefined) 
             ? Number(item.rating_tmdb).toFixed(1) 
-            : null;
-
-        // Si rating_tmdb no está aún en Supabase, lo traemos YA para evitar 'N/A'
-        if (!ratingTmdbStr) {
-            try {
-                const endpoint = item.type === 'movie' ? `movie/${item.tmdb_id}` : `tv/${item.tmdb_id}`;
-                const res = await fetch(`https://api.themoviedb.org/3/${endpoint}?language=es-ES`, { headers: { Authorization: `Bearer ${TMDB_TOKEN}` } });
-                if (res.ok) {
-                    const tmdbData = await res.json();
-                    if (tmdbData.vote_average) {
-                        ratingTmdbStr = tmdbData.vote_average.toFixed(1);
-                        clienteSupabase.from('items').update({ rating_tmdb: tmdbData.vote_average }).eq('id', item.id);
-                    }
-                }
-            } catch(e) {}
-        }
+            : 'N/A';
 
         registro.details = {
-            rating: ratingTmdbStr || 'N/A',
+            rating: ratingTmdbStr,
             rating_imdb: (item.rating_imdb !== null && item.rating_imdb !== undefined) ? Number(item.rating_imdb).toFixed(1) : null,
             runtime: item.runtime || null,
             country: item.country || '',
@@ -436,12 +420,12 @@ async function cargarMiLista() {
 
         const haceSieteDias = new Date(Date.now() - 7 * 24 * 60 * 60 * 1000);
         const estaCaducado = !item.api_updated_at || new Date(item.api_updated_at) < haceSieteDias;
-        if (estaCaducado || item.rating_imdb === null || item.rating_imdb === undefined) {
+        if (estaCaducado || item.rating_imdb === null || item.rating_imdb === undefined || item.rating_tmdb === null) {
             itemsParaSincronizar.push(registro);
         }
 
         return registro;
-    }));
+    });
 
     aplicarFiltrosYDiseño();
 
@@ -450,54 +434,61 @@ async function cargarMiLista() {
     }
 }
 
-// Sincronización en segundo plano con OMDb y TMDB
+// Sincronización acelerada en lotes de 4
 async function sincronizarEnSegundoPlano(registros) {
-    for (const reg of registros) {
-        const item = reg.items;
-        try {
-            const endpoint = item.type === 'movie' ? `movie/${item.tmdb_id}` : `tv/${item.tmdb_id}`;
-            const res = await fetch(`https://api.themoviedb.org/3/${endpoint}?language=es-ES&append_to_response=external_ids`, { headers: { Authorization: `Bearer ${TMDB_TOKEN}` } });
-            if (!res.ok) continue;
-            const tmdbData = await res.json();
+    const TAMANO_LOTE = 4;
+    for (let i = 0; i < registros.length; i += TAMANO_LOTE) {
+        const lote = registros.slice(i, i + TAMANO_LOTE);
+        
+        await Promise.all(lote.map(async (reg) => {
+            const item = reg.items;
+            try {
+                const endpoint = item.type === 'movie' ? `movie/${item.tmdb_id}` : `tv/${item.tmdb_id}`;
+                const res = await fetch(`https://api.themoviedb.org/3/${endpoint}?language=es-ES&append_to_response=external_ids`, { headers: { Authorization: `Bearer ${TMDB_TOKEN}` } });
+                if (!res.ok) return;
+                const tmdbData = await res.json();
 
-            let ratingTmdb = tmdbData.vote_average ? parseFloat(tmdbData.vote_average.toFixed(1)) : null;
-            let duracion = tmdbData.runtime || (tmdbData.episode_run_time && tmdbData.episode_run_time[0]) || null;
-            const codigosPais = tmdbData.origin_country || (tmdbData.production_countries ? tmdbData.production_countries.map(c=>c.iso_3166_1) : []);
-            let paisStr = Array.isArray(codigosPais) ? codigosPais.join(',') : (codigosPais || '');
+                let ratingTmdb = tmdbData.vote_average ? parseFloat(tmdbData.vote_average.toFixed(1)) : null;
+                let duracion = tmdbData.runtime || (tmdbData.episode_run_time && tmdbData.episode_run_time[0]) || null;
+                const codigosPais = tmdbData.origin_country || (tmdbData.production_countries ? tmdbData.production_countries.map(c=>c.iso_3166_1) : []);
+                let paisStr = Array.isArray(codigosPais) ? codigosPais.join(',') : (codigosPais || '');
 
-            let ratingImdb = null;
-            let imdbId = tmdbData.imdb_id || (tmdbData.external_ids && tmdbData.external_ids.imdb_id);
+                let ratingImdb = null;
+                let imdbId = tmdbData.imdb_id || (tmdbData.external_ids && tmdbData.external_ids.imdb_id);
 
-            if (imdbId && OMDB_TOKEN && OMDB_TOKEN.trim() !== '' && OMDB_TOKEN !== 'TU_CLAVE_OMDB') {
-                try {
-                    const omdbRes = await fetch(`https://www.omdbapi.com/?i=${imdbId}&apikey=${OMDB_TOKEN.trim()}`);
-                    const omdbData = await omdbRes.json();
-                    if (omdbData.Response === "True" && omdbData.imdbRating && omdbData.imdbRating !== 'N/A') {
-                        ratingImdb = parseFloat(omdbData.imdbRating);
-                    }
-                } catch(e) {}
-            }
+                if (imdbId && OMDB_TOKEN && OMDB_TOKEN.trim() !== '') {
+                    try {
+                        const omdbRes = await fetch(`https://www.omdbapi.com/?i=${imdbId}&apikey=${OMDB_TOKEN.trim()}`);
+                        const omdbData = await omdbRes.json();
+                        if (omdbData.Response === "True" && omdbData.imdbRating && omdbData.imdbRating !== 'N/A') {
+                            ratingImdb = parseFloat(omdbData.imdbRating);
+                        }
+                    } catch(e) {}
+                }
 
-            await clienteSupabase.from('items').update({
-                rating_tmdb: ratingTmdb,
-                rating_imdb: ratingImdb,
-                runtime: duracion,
-                country: paisStr,
-                api_updated_at: new Date().toISOString()
-            }).eq('id', item.id);
+                // Guardado directo en Supabase
+                const { error: errUpdate } = await clienteSupabase.from('items').update({
+                    rating_tmdb: ratingTmdb,
+                    rating_imdb: ratingImdb,
+                    runtime: duracion,
+                    country: paisStr,
+                    api_updated_at: new Date().toISOString()
+                }).eq('id', item.id);
 
-            const idx = miBibliotecaLocal.findIndex(r => r.id === reg.id);
-            if (idx > -1) {
-                if (ratingTmdb) miBibliotecaLocal[idx].details.rating = ratingTmdb.toFixed(1);
-                if (ratingImdb) miBibliotecaLocal[idx].details.rating_imdb = ratingImdb.toFixed(1);
-                miBibliotecaLocal[idx].details.country = paisStr;
-                miBibliotecaLocal[idx].details.runtime = duracion;
-            }
-            aplicarFiltrosYDiseño();
+                if (errUpdate) console.error("Error en Supabase update:", errUpdate);
 
-            await new Promise(r => setTimeout(r, 800));
+                const idx = miBibliotecaLocal.findIndex(r => r.id === reg.id);
+                if (idx > -1) {
+                    if (ratingTmdb) miBibliotecaLocal[idx].details.rating = ratingTmdb.toFixed(1);
+                    if (ratingImdb) miBibliotecaLocal[idx].details.rating_imdb = ratingImdb.toFixed(1);
+                    miBibliotecaLocal[idx].details.country = paisStr;
+                    miBibliotecaLocal[idx].details.runtime = duracion;
+                }
+            } catch(e) { console.error("Error en petición:", e); }
+        }));
 
-        } catch(e) { console.error("Error actualizando en segundo plano", e); }
+        aplicarFiltrosYDiseño();
+        await new Promise(r => setTimeout(r, 200));
     }
 }
 
@@ -517,7 +508,6 @@ function aplicarFiltrosYDiseño() {
         const matchStatus = currentFilterStatus === 'all' || registro.status === currentFilterStatus;
         let matchRating = !filterRating8Plus || (parseFloat(registro.details.rating) >= 8);
         
-        // Evaluación del filtro IMDb 8+
         let matchImdbRating = true;
         if (filterImdbRating8Plus) {
             const rImdb = parseFloat(registro.details.rating_imdb);
@@ -555,7 +545,6 @@ function pintarMiLista(dataArray) {
         const miNotaBadge = (registro.personal_rating > 0) 
             ? `<span class="absolute top-2 left-2 bg-blue-900/90 backdrop-blur-md text-blue-300 text-[11px] font-black px-2 py-1 rounded-lg border border-blue-500/50 shadow-md shadow-blue-900/50">★ ${registro.personal_rating}</span>` : '';
 
-        // Badge de IMDb en las carátulas de portada
         const imdbBadge = details.rating_imdb 
             ? `<span class="bg-black/80 backdrop-blur-md text-amber-300 text-[10px] font-bold px-2 py-1 rounded-lg border border-amber-500/30 shadow-md">🎬 ${details.rating_imdb}</span>`
             : `<span class="bg-black/60 backdrop-blur-md text-gray-400 text-[10px] font-bold px-2 py-1 rounded-lg border border-gray-700/50 shadow-md">🎬 --</span>`;
@@ -585,7 +574,6 @@ function pintarMiLista(dataArray) {
             <div class="relative aspect-[2/3] overflow-hidden bg-gray-950">
                 <img src="${imgUrl}" alt="${item.title}" class="w-full h-full object-cover group-hover:scale-105 transition-transform duration-300">
                 ${miNotaBadge}
-                <!-- Doble insignia en la esquina superior derecha -->
                 <div class="absolute top-2 right-2 flex flex-col items-end gap-1">
                     <span class="bg-black/80 backdrop-blur-md text-yellow-400 text-[10px] font-bold px-2 py-1 rounded-lg border border-yellow-500/20 shadow-md">⭐ ${details.rating}</span>
                     ${imdbBadge}
@@ -631,7 +619,7 @@ async function cargarDatosAvanzados(tmdb_id, tipo) {
 
         let imdbId = dataFull.imdb_id || (dataFull.external_ids && dataFull.external_ids.imdb_id);
         
-        if (imdbId && OMDB_TOKEN && OMDB_TOKEN.trim() !== '' && OMDB_TOKEN !== 'TU_CLAVE_OMDB') {
+        if (imdbId && OMDB_TOKEN && OMDB_TOKEN.trim() !== '') {
             try {
                 const omdbRes = await fetch(`https://www.omdbapi.com/?i=${imdbId}&apikey=${OMDB_TOKEN.trim()}&lang=es`);
                 const omdbData = await omdbRes.json();
@@ -640,6 +628,15 @@ async function cargarDatosAvanzados(tmdb_id, tipo) {
                     if (omdbData.imdbRating && omdbData.imdbRating !== 'N/A') {
                         detailImdbRating.innerHTML = `🎬 IMDb: <span class="text-white">${omdbData.imdbRating}</span>`;
                         detailImdbRating.classList.remove('hidden');
+
+                        // Guardado inmediato en Supabase y en la vista global al abrir la ficha
+                        const ratingNum = parseFloat(omdbData.imdbRating);
+                        const idx = miBibliotecaLocal.findIndex(r => r.items.tmdb_id === tmdb_id);
+                        if (idx > -1) {
+                            miBibliotecaLocal[idx].details.rating_imdb = ratingNum.toFixed(1);
+                            await clienteSupabase.from('items').update({ rating_imdb: ratingNum }).eq('id', miBibliotecaLocal[idx].items.id);
+                            aplicarFiltrosYDiseño();
+                        }
                     }
                     if (!duracion && omdbData.Runtime && omdbData.Runtime !== 'N/A') duracion = parseInt(omdbData.Runtime);
                     
