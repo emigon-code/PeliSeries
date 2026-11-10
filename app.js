@@ -273,7 +273,6 @@ function renderResults(resultados) {
         const titulo = item.title || item.name;
         const isMovie = item.media_type === 'movie';
         
-        // Insignias en contraste de colores
         const badgeTipo = isMovie 
             ? `<span class="bg-cyan-950/90 text-cyan-300 border border-cyan-700/60 px-2 py-0.5 rounded-md text-[9px] font-black uppercase tracking-widest">🍿 Película</span>`
             : `<span class="bg-amber-950/90 text-amber-300 border border-amber-700/60 px-2 py-0.5 rounded-md text-[9px] font-black uppercase tracking-widest">📺 Serie</span>`;
@@ -319,7 +318,11 @@ function updateBtnClassesMulti(selector, activeArray, dataAttr) {
 
 localSearchInput.addEventListener('input', (e) => { localSearchQuery = e.target.value.toLowerCase().trim(); aplicarFiltrosYDiseño(); });
 if (genreFilterSelect) {
-    genreFilterSelect.addEventListener('change', (e) => { currentGenreFilter = e.target.value; aplicarFiltrosYDiseño(); });
+    genreFilterSelect.addEventListener('change', (e) => { 
+        currentGenreFilter = e.target.value; 
+        aplicarFiltrosYDiseño(); 
+        e.target.blur(); 
+    });
 }
 
 document.querySelectorAll('.filter-type-btn').forEach(btn => {
@@ -407,12 +410,22 @@ function actualizarOpcionesSelectorGeneros() {
         }
     });
 
-    const valorActual = genreFilterSelect.value;
+    const listaOrdenada = Array.from(generosUnicos).sort();
+    const claveGeneros = listaOrdenada.join('|');
+    
+    if (genreFilterSelect.dataset.lastGenres === claveGeneros) {
+        genreFilterSelect.value = generosUnicos.has(currentGenreFilter) ? currentGenreFilter : 'all';
+        return;
+    }
+    genreFilterSelect.dataset.lastGenres = claveGeneros;
+
     genreFilterSelect.innerHTML = '<option value="all" class="bg-gray-900 text-gray-300">🎭 Todos los géneros</option>';
-    Array.from(generosUnicos).sort().forEach(g => {
+    listaOrdenada.forEach(g => {
         if (g) genreFilterSelect.innerHTML += `<option value="${g}" class="bg-gray-900 text-gray-300">${g}</option>`;
     });
-    genreFilterSelect.value = generosUnicos.has(valorActual) ? valorActual : 'all';
+
+    genreFilterSelect.value = generosUnicos.has(currentGenreFilter) ? currentGenreFilter : 'all';
+    if (!generosUnicos.has(currentGenreFilter)) currentGenreFilter = 'all';
 }
 
 async function cargarMiLista() {
@@ -585,16 +598,12 @@ function pintarMiLista(dataArray) {
         
         const isMovie = item.type === 'movie';
         
-        // Insignias en alto contraste de colores para Película vs Serie
         const badgeTipo = isMovie 
             ? `<span class="bg-cyan-950/90 text-cyan-300 border border-cyan-700/60 px-2 py-0.5 rounded-md text-[9px] font-black uppercase tracking-widest">🍿 Película</span>`
             : `<span class="bg-amber-950/90 text-amber-300 border border-amber-700/60 px-2 py-0.5 rounded-md text-[9px] font-black uppercase tracking-widest">📺 Serie</span>`;
 
-        // Año y Géneros en la tarjeta
         const yearBadge = details.year ? `<span class="ml-1 text-gray-400 text-xs font-normal">(${details.year})</span>` : '';
         const genresBadge = details.genres ? `<span class="text-[10px] text-purple-300/80 font-medium block truncate mt-0.5">🎭 ${details.genres}</span>` : '';
-
-        // Duración exclusiva de Películas en la tarjeta
         const runtimeBadge = (isMovie && details.runtime) ? `<span class="text-[10px] text-gray-400 font-medium block">⏳ ${details.runtime} min</span>` : '';
 
         let badgeSerie = ''; let badgeNextEpisode = '';
@@ -680,7 +689,6 @@ async function cargarDatosAvanzados(tmdb_id, tipo) {
         const yearStr = (dataFull.release_date || dataFull.first_air_date || '').substring(0, 4);
         if (yearStr) detailYear.textContent = `(${yearStr})`;
 
-        // Muestra de Género en la ficha
         if (dataFull.genres && dataFull.genres.length > 0) {
             detailGenres.textContent = `🎭 ${dataFull.genres.map(g => g.name).join(', ')}`;
             detailGenres.classList.remove('hidden');
@@ -804,7 +812,6 @@ async function abrirModalDetalleDesdeBusqueda(tmdb_id) {
     
     detailTitle.textContent = item.title || item.name;
     
-    // Insignias estilizadas en modal
     const isMovie = item.media_type === 'movie';
     detailBadgeType.textContent = isMovie ? 'Película' : 'Serie';
     detailBadgeType.className = isMovie 
