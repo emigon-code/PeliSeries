@@ -74,6 +74,7 @@ const detailPersonalRating = document.getElementById('detailPersonalRating');
 const miValoracionContenedor = document.getElementById('miValoracionContenedor');
 const detailSeasons = document.getElementById('detailSeasons');
 const detailStatus = document.getElementById('detailStatus');
+const detailNextEpisode = document.getElementById('detailNextEpisode');
 const detailOverview = document.getElementById('detailOverview');
 const detailActions = document.getElementById('detailActions');
 const detailRecommendations = document.getElementById('detailRecommendations');
@@ -517,12 +518,13 @@ async function cargarMiLista() {
             overview: 'Haz clic para ver detalles.',
             seasons_count: 0,
             is_ended: false,
-            seasons_data: []
+            seasons_data: [],
+            next_episode: null
         };
 
         const haceSieteDias = new Date(Date.now() - 7 * 24 * 60 * 60 * 1000);
         const estaCaducado = !item.api_updated_at || new Date(item.api_updated_at) < haceSieteDias;
-        if (estaCaducado || item.rating_imdb === null || item.rating_imdb === undefined || item.rating_tmdb === null || !item.genres || !item.year || item.saga === undefined) {
+        if (estaCaducado || item.rating_imdb === null || item.rating_imdb === undefined || item.rating_tmdb === null || !item.genres || !item.year || item.saga === undefined || (item.type === 'tv' && (!registro.details.seasons_data || registro.details.seasons_data.length === 0))) {
             itemsParaSincronizar.push(registro);
         }
 
@@ -534,7 +536,9 @@ async function cargarMiLista() {
     aplicarFiltrosYDiseño();
 
     if (itemsParaSincronizar.length > 0) {
-        sincronizarEnSegundoPlano(itemsParaSincronizar);
+        // Limita a un máximo de 20 elementos caducados por cada sesión
+        const loteSesion = itemsParaSincronizar.slice(0, 20);
+        sincronizarEnSegundoPlano(loteSesion);
     }
 }
 
@@ -610,6 +614,13 @@ async function sincronizarEnSegundoPlano(registros) {
                     miBibliotecaLocal[idx].details.genres = generosStr;
                     miBibliotecaLocal[idx].details.year = rawYear;
                     miBibliotecaLocal[idx].details.saga = sagaStr;
+
+                    if (item.type === 'tv') {
+                        miBibliotecaLocal[idx].details.seasons_data = tmdbData.seasons || [];
+                        miBibliotecaLocal[idx].details.seasons_count = tmdbData.number_of_seasons || 0;
+                        miBibliotecaLocal[idx].details.is_ended = (tmdbData.status === 'Ended' || tmdbData.status === 'Canceled');
+                        recalcularSiguienteCapitulo(miBibliotecaLocal[idx]);
+                    }
                 }
             } catch(e) { console.error("Error en petición:", e); }
         }));
@@ -757,6 +768,7 @@ function pintarMiLista(dataArray) {
 function cerrarModalDetalle() { 
     modalDetalle.classList.add('hidden'); currentDetailTrackingId = null; 
     detailSeasonsWrapper.classList.add('hidden'); detailSeasonsContent.innerHTML = '';
+    detailNextEpisode.classList.add('hidden');
 }
 
 async function cargarDatosAvanzados(tmdb_id, tipo) {
@@ -764,6 +776,7 @@ async function cargarDatosAvanzados(tmdb_id, tipo) {
     detailRuntime.classList.add('hidden'); 
     detailGenres.classList.add('hidden');
     detailSaga.classList.add('hidden');
+    detailNextEpisode.classList.add('hidden');
     detailExtraInfo.classList.add('hidden'); 
     detailExtraInfo.innerHTML = '';
 
@@ -856,13 +869,31 @@ async function cargarDatosAvanzados(tmdb_id, tipo) {
 
         if (tipo === 'tv') {
             const totalTemp = dataFull.number_of_seasons || 0;
+            const isEnded = (dataFull.status === 'Ended' || dataFull.status === 'Canceled');
             detailSeasons.textContent = `${totalTemp} Temporada${totalTemp !== 1 ? 's' : ''}`;
             detailSeasons.classList.remove('hidden');
-            detailStatus.textContent = (dataFull.status === 'Ended' || dataFull.status === 'Canceled') ? '🔴 Finalizada' : '🟢 En emisión';
+            detailStatus.textContent = isEnded ? '🔴 Finalizada' : '🟢 En emisión';
             detailStatus.classList.remove('hidden');
+
+            const idx = miBibliotecaLocal.findIndex(r => r.items.tmdb_id === tmdb_id);
+            if (idx > -1) {
+                miBibliotecaLocal[idx].details.seasons_data = dataFull.seasons || [];
+                miBibliotecaLocal[idx].details.seasons_count = totalTemp;
+                miBibliotecaLocal[idx].details.is_ended = isEnded;
+                recalcularSiguienteCapitulo(miBibliotecaLocal[idx]);
+
+                if (miBibliotecaLocal[idx].details.next_episode) {
+                    detailNextEpisode.textContent = `▶ Siguiente: ${miBibliotecaLocal[idx].details.next_episode}`;
+                    detailNextEpisode.classList.remove('hidden');
+                } else {
+                    detailNextEpisode.classList.add('hidden');
+                }
+                aplicarFiltrosYDiseño();
+            }
         } else {
             detailSeasons.classList.add('hidden');
             detailStatus.classList.add('hidden');
+            detailNextEpisode.classList.add('hidden');
         }
     } catch(e) {}
 }
@@ -927,7 +958,7 @@ async function cargarRecomendaciones(tmdb_id, tipo) {
 
 async function abrirModalDetalleDesdeBusqueda(tmdb_id) {
     const item = pelisYSeries.find(i => i.id === tmdb_id); if (!item) return;
-    modalDetalle.classList.remove('hidden'); miValoracionContenedor.classList.add('hidden'); 
+    modalDetalle.classList.remove('hidden'); miValoracionContenedor.classList.add('hidden'); detailNextEpisode.classList.add('hidden');
     
     detailTitle.textContent = item.title || item.name;
     
@@ -974,10 +1005,16 @@ function abrirModalDetalleDesdeLista(tracking_id) {
 
     detailSeasons.classList.add('hidden');
     detailStatus.classList.add('hidden');
+    detailNextEpisode.classList.add('hidden');
     
     detailYear.textContent = details.year ? `(${details.year})` : '';
     detailPoster.src = item.poster_path ? `https://image.tmdb.org/t/p/w500${item.poster_path}` : 'https://via.placeholder.com/500x750/1f2937/ffffff?text=Sin+Poster';
     detailRating.textContent = `⭐ ${details.rating}`;
+
+    if (details.next_episode) {
+        detailNextEpisode.textContent = `▶ Siguiente: ${details.next_episode}`;
+        detailNextEpisode.classList.remove('hidden');
+    }
 
     // Géneros interactivos desde datos locales
     if (details.genres) {
@@ -1240,6 +1277,13 @@ async function evaluarEstadoSerieDesdeEpisodios(tracking_id, tmdb_id) {
     if (idx > -1) {
         miBibliotecaLocal[idx].status = nuevoEstado; miBibliotecaLocal[idx].updated_local = new Date().toISOString();
         miBibliotecaLocal[idx].user_episodes = [...vistosTemporal]; recalcularSiguienteCapitulo(miBibliotecaLocal[idx]); 
+        
+        if (miBibliotecaLocal[idx].details.next_episode) {
+            detailNextEpisode.textContent = `▶ Siguiente: ${miBibliotecaLocal[idx].details.next_episode}`;
+            detailNextEpisode.classList.remove('hidden');
+        } else {
+            detailNextEpisode.classList.add('hidden');
+        }
     }
     const titulo = document.getElementById('detailTitle').textContent;
     evaluarBotonSerieCompleta(tracking_id, tmdb_id, titulo); aplicarFiltrosYDiseño(); 
