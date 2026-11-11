@@ -238,6 +238,35 @@ function obtenerBandera(codigos) {
     return `${flag} ${code.trim()}`;
 }
 
+// --- DETECTOR INTELIGENTE DE SAGAS Y FRANQUICIAS ---
+function determinarSaga(tmdbData) {
+    let sagaStr = '';
+    if (tmdbData.belongs_to_collection && tmdbData.belongs_to_collection.name) {
+        sagaStr = tmdbData.belongs_to_collection.name.replace(/^Colección\s+/i, '');
+    }
+
+    const tituloLower = (tmdbData.title || tmdbData.name || '').toLowerCase();
+    const productoras = (tmdbData.production_companies || []).map(c => (c.name || '').toLowerCase()).join(' ');
+
+    if (productoras.includes('marvel') || tituloLower.includes('marvel') || tituloLower.includes('avengers') || tituloLower.includes('vengadores') || tituloLower.includes('spider-man') || tituloLower.includes('spiderman') || tituloLower.includes('thor') || tituloLower.includes('iron man') || tituloLower.includes('captain america') || tituloLower.includes('capitán américa') || tituloLower.includes('loki') || tituloLower.includes('wandavision') || tituloLower.includes('agatha') || tituloLower.includes('visionquest') || tituloLower.includes('vision quest') || tituloLower.includes('echo') || tituloLower.includes('daredevil') || tituloLower.includes('hawkeye') || tituloLower.includes('she-hulk') || tituloLower.includes('moon knight') || tituloLower.includes('secret invasion') || tituloLower.includes('guardians of the galaxy') || tituloLower.includes('guardianes de la galaxia') || tituloLower.includes('black panther') || tituloLower.includes('doctor strange') || tituloLower.includes('ant-man') || tituloLower.includes('deadpool') || tituloLower.includes('x-men')) {
+        return 'Marvel';
+    } 
+    if (productoras.includes('lucasfilm') || tituloLower.includes('star wars') || tituloLower.includes('mandalorian') || tituloLower.includes('andor') || tituloLower.includes('boba fett') || tituloLower.includes('obi-wan') || tituloLower.includes('ahsoka') || tituloLower.includes('acolyte')) {
+        return 'Star Wars';
+    } 
+    if (tituloLower.includes('anillos') || tituloLower.includes('hobbit') || tituloLower.includes('tierra media') || tituloLower.includes('lord of the rings') || tituloLower.includes('rings of power')) {
+        return 'Tolkien / ESDLA';
+    } 
+    if (productoras.includes('dc entertainment') || productoras.includes('dc films') || productoras.includes('dc studios') || tituloLower.includes('batman') || tituloLower.includes('superman') || tituloLower.includes('dc ') || tituloLower.includes('justice league') || tituloLower.includes('joker') || tituloLower.includes('aquaman') || tituloLower.includes('wonder woman') || tituloLower.includes('peacemaker') || tituloLower.includes('penguin') || tituloLower.includes('pingüino')) {
+        return 'DC Universe';
+    } 
+    if (tituloLower.includes('harry potter') || tituloLower.includes('animales fantásticos') || tituloLower.includes('fantastic beasts')) {
+        return 'Harry Potter';
+    }
+
+    return sagaStr;
+}
+
 // --- ACCIONES DIRECTAS DE NAVEGACIÓN DESDE EL MODAL DETALLE ---
 function filtrarPorGeneroDirecto(genero) {
     cerrarModalDetalle();
@@ -490,7 +519,7 @@ async function cargarMiLista() {
     myListGrid.innerHTML = '<p class="text-indigo-400 col-span-full text-center py-8">Cargando biblioteca personal...</p>';
 
     const { data, error } = await clienteSupabase.from('user_tracking')
-        .select(`*, items ( id, tmdb_id, title, type, poster_path, rating_tmdb, rating_imdb, runtime, country, genres, year, saga, api_updated_at ), user_episodes (season_number, episode_number)`)
+        .select(`*, items ( id, tmdb_id, title, type, poster_path, rating_tmdb, rating_imdb, runtime, country, genres, year, saga, seasons_data, api_updated_at ), user_episodes (season_number, episode_number)`)
         .eq('user_id', usuarioActual.id);
 
     if (error || !data || data.length === 0) { 
@@ -516,11 +545,15 @@ async function cargarMiLista() {
             year: item.year || '',
             saga: item.saga || '',
             overview: 'Haz clic para ver detalles.',
-            seasons_count: 0,
+            seasons_count: item.seasons_data ? item.seasons_data.filter(s=>s.season_number>0).length : 0,
             is_ended: false,
-            seasons_data: [],
+            seasons_data: item.seasons_data || [],
             next_episode: null
         };
+
+        if (item.type === 'tv' && registro.details.seasons_data.length > 0) {
+            recalcularSiguienteCapitulo(registro);
+        }
 
         const haceSieteDias = new Date(Date.now() - 7 * 24 * 60 * 60 * 1000);
         const estaCaducado = !item.api_updated_at || new Date(item.api_updated_at) < haceSieteDias;
@@ -536,7 +569,6 @@ async function cargarMiLista() {
     aplicarFiltrosYDiseño();
 
     if (itemsParaSincronizar.length > 0) {
-        // Limita a un máximo de 20 elementos caducados por cada sesión
         const loteSesion = itemsParaSincronizar.slice(0, 20);
         sincronizarEnSegundoPlano(loteSesion);
     }
@@ -563,23 +595,8 @@ async function sincronizarEnSegundoPlano(registros) {
                 let generosStr = tmdbData.genres ? tmdbData.genres.map(g => g.name).join(', ') : '';
                 let rawYear = (tmdbData.release_date || tmdbData.first_air_date || '').substring(0, 4);
 
-                // Detección de Saga o Colección
-                let sagaStr = '';
-                if (tmdbData.belongs_to_collection && tmdbData.belongs_to_collection.name) {
-                    sagaStr = tmdbData.belongs_to_collection.name.replace(/^Colección\s+/i, '');
-                }
-                const tituloLower = (tmdbData.title || tmdbData.name || '').toLowerCase();
-                if (tituloLower.includes('star wars') || tituloLower.includes('mandalorian') || tituloLower.includes('andor') || tituloLower.includes('boba fett') || tituloLower.includes('obi-wan')) {
-                    sagaStr = 'Star Wars';
-                } else if (tituloLower.includes('anillos') || tituloLower.includes('hobbit') || tituloLower.includes('tierra media') || tituloLower.includes('lord of the rings')) {
-                    sagaStr = 'Tolkien / ESDLA';
-                } else if (tituloLower.includes('marvel') || tituloLower.includes('avengers') || tituloLower.includes('spider-man') || tituloLower.includes('thor') || tituloLower.includes('iron man') || tituloLower.includes('captain america') || tituloLower.includes('loki') || tituloLower.includes('wandavision')) {
-                    sagaStr = 'Marvel';
-                } else if (tituloLower.includes('batman') || tituloLower.includes('superman') || tituloLower.includes('dc ') || tituloLower.includes('justice league') || tituloLower.includes('joker') || tituloLower.includes('aquaman') || tituloLower.includes('wonder woman') || tituloLower.includes('peacemaker')) {
-                    sagaStr = 'DC Universe';
-                } else if (tituloLower.includes('harry potter') || tituloLower.includes('animales fantásticos') || tituloLower.includes('fantastic beasts')) {
-                    sagaStr = 'Harry Potter';
-                }
+                let sagaStr = determinarSaga(tmdbData);
+                let seasonsData = item.type === 'tv' ? (tmdbData.seasons || []) : null;
 
                 let ratingImdb = null;
                 let imdbId = tmdbData.imdb_id || (tmdbData.external_ids && tmdbData.external_ids.imdb_id);
@@ -602,6 +619,7 @@ async function sincronizarEnSegundoPlano(registros) {
                     genres: generosStr,
                     year: rawYear,
                     saga: sagaStr,
+                    seasons_data: seasonsData,
                     api_updated_at: new Date().toISOString()
                 }).eq('id', item.id);
 
@@ -616,7 +634,7 @@ async function sincronizarEnSegundoPlano(registros) {
                     miBibliotecaLocal[idx].details.saga = sagaStr;
 
                     if (item.type === 'tv') {
-                        miBibliotecaLocal[idx].details.seasons_data = tmdbData.seasons || [];
+                        miBibliotecaLocal[idx].details.seasons_data = seasonsData || [];
                         miBibliotecaLocal[idx].details.seasons_count = tmdbData.number_of_seasons || 0;
                         miBibliotecaLocal[idx].details.is_ended = (tmdbData.status === 'Ended' || tmdbData.status === 'Canceled');
                         recalcularSiguienteCapitulo(miBibliotecaLocal[idx]);
@@ -799,24 +817,8 @@ async function cargarDatosAvanzados(tmdb_id, tipo) {
             detailGenres.classList.remove('hidden');
         }
 
-        // Hipervínculo interactivo para Saga
-        let sagaStr = '';
-        if (dataFull.belongs_to_collection && dataFull.belongs_to_collection.name) {
-            sagaStr = dataFull.belongs_to_collection.name.replace(/^Colección\s+/i, '');
-        }
-        const tituloLower = (dataFull.title || dataFull.name || '').toLowerCase();
-        if (tituloLower.includes('star wars') || tituloLower.includes('mandalorian') || tituloLower.includes('andor') || tituloLower.includes('boba fett') || tituloLower.includes('obi-wan')) {
-            sagaStr = 'Star Wars';
-        } else if (tituloLower.includes('anillos') || tituloLower.includes('hobbit') || tituloLower.includes('tierra media') || tituloLower.includes('lord of the rings')) {
-            sagaStr = 'Tolkien / ESDLA';
-        } else if (tituloLower.includes('marvel') || tituloLower.includes('avengers') || tituloLower.includes('spider-man') || tituloLower.includes('thor') || tituloLower.includes('iron man') || tituloLower.includes('captain america') || tituloLower.includes('loki') || tituloLower.includes('wandavision')) {
-            sagaStr = 'Marvel';
-        } else if (tituloLower.includes('batman') || tituloLower.includes('superman') || tituloLower.includes('dc ') || tituloLower.includes('justice league') || tituloLower.includes('joker') || tituloLower.includes('aquaman') || tituloLower.includes('wonder woman') || tituloLower.includes('peacemaker')) {
-            sagaStr = 'DC Universe';
-        } else if (tituloLower.includes('harry potter') || tituloLower.includes('animales fantásticos') || tituloLower.includes('fantastic beasts')) {
-            sagaStr = 'Harry Potter';
-        }
-
+        // Detección de Saga
+        let sagaStr = determinarSaga(dataFull);
         if (sagaStr) {
             detailSaga.innerHTML = `
                 <button onclick="filtrarPorSagaDirecta('${sagaStr.replace(/'/g, "\\'")}')" class="bg-amber-950/90 hover:bg-amber-800 text-amber-200 border border-amber-700/70 px-3 py-1 rounded-lg text-xs font-bold transition-all shadow-sm flex items-center gap-1 hover:scale-105 cursor-pointer">
@@ -870,6 +872,8 @@ async function cargarDatosAvanzados(tmdb_id, tipo) {
         if (tipo === 'tv') {
             const totalTemp = dataFull.number_of_seasons || 0;
             const isEnded = (dataFull.status === 'Ended' || dataFull.status === 'Canceled');
+            const seasonsData = dataFull.seasons || [];
+            
             detailSeasons.textContent = `${totalTemp} Temporada${totalTemp !== 1 ? 's' : ''}`;
             detailSeasons.classList.remove('hidden');
             detailStatus.textContent = isEnded ? '🔴 Finalizada' : '🟢 En emisión';
@@ -877,10 +881,17 @@ async function cargarDatosAvanzados(tmdb_id, tipo) {
 
             const idx = miBibliotecaLocal.findIndex(r => r.items.tmdb_id === tmdb_id);
             if (idx > -1) {
-                miBibliotecaLocal[idx].details.seasons_data = dataFull.seasons || [];
+                miBibliotecaLocal[idx].details.seasons_data = seasonsData;
                 miBibliotecaLocal[idx].details.seasons_count = totalTemp;
                 miBibliotecaLocal[idx].details.is_ended = isEnded;
+                miBibliotecaLocal[idx].details.saga = sagaStr;
                 recalcularSiguienteCapitulo(miBibliotecaLocal[idx]);
+
+                // Guardar seasons_data y saga en Supabase para persistir al recargar
+                clienteSupabase.from('items').update({
+                    seasons_data: seasonsData,
+                    saga: sagaStr
+                }).eq('id', miBibliotecaLocal[idx].items.id);
 
                 if (miBibliotecaLocal[idx].details.next_episode) {
                     detailNextEpisode.textContent = `▶ Siguiente: ${miBibliotecaLocal[idx].details.next_episode}`;
