@@ -442,20 +442,46 @@ async function borrarDeMiLista(tracking_id, tmdb_id, titulo) {
 // --- MI LISTA CON CACHÉ Y SINCRONIZACIÓN EN PARALELO ---
 function calcularTotalCapitulosOficiales(seasonsData) {
     if (!seasonsData) return 0;
-    return seasonsData.filter(s => s.season_number > 0).reduce((acc, s) => acc + s.episode_count, 0);
+    let seasons = seasonsData;
+    if (typeof seasons === 'string') { try { seasons = JSON.parse(seasons); } catch(e) { seasons = []; } }
+    if (!Array.isArray(seasons)) return 0;
+    return seasons.filter(s => s && s.season_number > 0).reduce((acc, s) => acc + (s.episode_count || 0), 0);
 }
+
 function recalcularSiguienteCapitulo(registro) {
-    if (registro.items.type !== 'tv' || (registro.status === 'vista' && !registro.has_new_episodes) || !registro.details.seasons_data) {
-        registro.details.next_episode = null; return;
+    const estaViendo = registro.status === 'viendo';
+    const tieneNovedades = registro.status === 'vista' && registro.has_new_episodes;
+
+    if (registro.items.type !== 'tv' || (!estaViendo && !tieneNovedades)) {
+        registro.details.next_episode = null;
+        return;
     }
+
+    let seasons = registro.details.seasons_data;
+    if (typeof seasons === 'string') {
+        try { seasons = JSON.parse(seasons); } catch(e) { seasons = []; }
+    }
+
+    if (!Array.isArray(seasons) || seasons.length === 0) {
+        registro.details.next_episode = null;
+        return;
+    }
+
     const watched = registro.user_episodes || [];
-    const validSeasons = registro.details.seasons_data.filter(s => s.season_number > 0).sort((a,b) => a.season_number - b.season_number);
+    const validSeasons = seasons.filter(s => s && s.season_number > 0).sort((a,b) => a.season_number - b.season_number);
+    
     for (const s of validSeasons) {
         let missingEp = 0;
         for (let e = 1; e <= s.episode_count; e++) {
-            if (!watched.some(w => w.season_number === s.season_number && w.episode_number === e)) { missingEp = e; break; }
+            if (!watched.some(w => w.season_number === s.season_number && w.episode_number === e)) { 
+                missingEp = e; 
+                break; 
+            }
         }
-        if (missingEp > 0) { registro.details.next_episode = `T${s.season_number}x${missingEp.toString().padStart(2, '0')}`; return; }
+        if (missingEp > 0) { 
+            registro.details.next_episode = `T${s.season_number}x${missingEp.toString().padStart(2, '0')}`; 
+            return; 
+        }
     }
     registro.details.next_episode = null;
 }
@@ -536,6 +562,11 @@ async function cargarMiLista() {
             ? Number(item.rating_tmdb).toFixed(1) 
             : 'N/A';
 
+        let rawSeasons = item.seasons_data || [];
+        if (typeof rawSeasons === 'string') {
+            try { rawSeasons = JSON.parse(rawSeasons); } catch(e) { rawSeasons = []; }
+        }
+
         registro.details = {
             rating: ratingTmdbStr,
             rating_imdb: (item.rating_imdb !== null && item.rating_imdb !== undefined) ? Number(item.rating_imdb).toFixed(1) : null,
@@ -545,19 +576,26 @@ async function cargarMiLista() {
             year: item.year || '',
             saga: item.saga || '',
             overview: 'Haz clic para ver detalles.',
-            seasons_count: item.seasons_data ? item.seasons_data.filter(s=>s.season_number>0).length : 0,
+            seasons_count: Array.isArray(rawSeasons) ? rawSeasons.filter(s => s && s.season_number > 0).length : 0,
             is_ended: false,
-            seasons_data: item.seasons_data || [],
+            seasons_data: rawSeasons,
             next_episode: null
         };
 
-        if (item.type === 'tv' && registro.details.seasons_data.length > 0) {
+        if (item.type === 'tv') {
+            const totalCapitulosTMDB = calcularTotalCapitulosOficiales(rawSeasons);
+            const totalVistosUsuario = (registro.user_episodes || []).length;
+            if (totalCapitulosTMDB > totalVistosUsuario && registro.status === 'vista') {
+                registro.has_new_episodes = true;
+            } else {
+                registro.has_new_episodes = false;
+            }
             recalcularSiguienteCapitulo(registro);
         }
 
         const haceSieteDias = new Date(Date.now() - 7 * 24 * 60 * 60 * 1000);
         const estaCaducado = !item.api_updated_at || new Date(item.api_updated_at) < haceSieteDias;
-        if (estaCaducado || item.rating_imdb === null || item.rating_imdb === undefined || item.rating_tmdb === null || !item.genres || !item.year || item.saga === undefined || (item.type === 'tv' && (!registro.details.seasons_data || registro.details.seasons_data.length === 0))) {
+        if (estaCaducado || item.rating_imdb === null || item.rating_imdb === undefined || item.rating_tmdb === null || !item.genres || !item.year || item.saga === undefined || (item.type === 'tv' && (!rawSeasons || rawSeasons.length === 0))) {
             itemsParaSincronizar.push(registro);
         }
 
@@ -611,7 +649,7 @@ async function sincronizarEnSegundoPlano(registros) {
                     } catch(e) {}
                 }
 
-                await clienteSupabase.from('items').update({
+                const { error: errUp } = await clienteSupabase.from('items').update({
                     rating_tmdb: ratingTmdb,
                     rating_imdb: ratingImdb,
                     runtime: duracion,
@@ -622,6 +660,8 @@ async function sincronizarEnSegundoPlano(registros) {
                     seasons_data: seasonsData,
                     api_updated_at: new Date().toISOString()
                 }).eq('id', item.id);
+
+                if (errUp) console.error("Error al guardar en Supabase para item ID:", item.id, errUp);
 
                 const idx = miBibliotecaLocal.findIndex(r => r.id === reg.id);
                 if (idx > -1) {
@@ -637,10 +677,20 @@ async function sincronizarEnSegundoPlano(registros) {
                         miBibliotecaLocal[idx].details.seasons_data = seasonsData || [];
                         miBibliotecaLocal[idx].details.seasons_count = tmdbData.number_of_seasons || 0;
                         miBibliotecaLocal[idx].details.is_ended = (tmdbData.status === 'Ended' || tmdbData.status === 'Canceled');
+                        
+                        const totalCapitulosTMDB = calcularTotalCapitulosOficiales(seasonsData);
+                        const totalVistosUsuario = (miBibliotecaLocal[idx].user_episodes || []).length;
+                        
+                        if (totalCapitulosTMDB > totalVistosUsuario && miBibliotecaLocal[idx].status === 'vista') {
+                            miBibliotecaLocal[idx].has_new_episodes = true;
+                        } else {
+                            miBibliotecaLocal[idx].has_new_episodes = false;
+                        }
+
                         recalcularSiguienteCapitulo(miBibliotecaLocal[idx]);
                     }
                 }
-            } catch(e) { console.error("Error en petición:", e); }
+            } catch(e) { console.error("Error en petición TMDB:", e); }
         }));
 
         actualizarOpcionesSelectorGeneros();
@@ -885,13 +935,23 @@ async function cargarDatosAvanzados(tmdb_id, tipo) {
                 miBibliotecaLocal[idx].details.seasons_count = totalTemp;
                 miBibliotecaLocal[idx].details.is_ended = isEnded;
                 miBibliotecaLocal[idx].details.saga = sagaStr;
+
+                const totalCapitulosTMDB = calcularTotalCapitulosOficiales(seasonsData);
+                const totalVistosUsuario = (miBibliotecaLocal[idx].user_episodes || []).length;
+                if (totalCapitulosTMDB > totalVistosUsuario && miBibliotecaLocal[idx].status === 'vista') {
+                    miBibliotecaLocal[idx].has_new_episodes = true;
+                } else {
+                    miBibliotecaLocal[idx].has_new_episodes = false;
+                }
+
                 recalcularSiguienteCapitulo(miBibliotecaLocal[idx]);
 
-                // Guardar seasons_data y saga en Supabase para persistir al recargar
-                clienteSupabase.from('items').update({
+                const { error: errModal } = await clienteSupabase.from('items').update({
                     seasons_data: seasonsData,
                     saga: sagaStr
                 }).eq('id', miBibliotecaLocal[idx].items.id);
+
+                if (errModal) console.error("Error al guardar temporadas en Supabase desde el modal:", errModal);
 
                 if (miBibliotecaLocal[idx].details.next_episode) {
                     detailNextEpisode.textContent = `▶ Siguiente: ${miBibliotecaLocal[idx].details.next_episode}`;
@@ -1281,10 +1341,16 @@ function actualizarHeaderTemporada(season_number) {
 
 async function evaluarEstadoSerieDesdeEpisodios(tracking_id, tmdb_id) {
     const totalVistos = vistosTemporal.length; let nuevoEstado = 'pendiente';
-    if (totalVistos >= totalSerieCapitulosGlobal && totalSerieCapitulosGlobal > 0) nuevoEstado = 'vista';
-    else if (totalVistos > 0) nuevoEstado = 'viendo';
-    await actualizarEstadoSeguro(tracking_id, nuevoEstado);
     const idx = miBibliotecaLocal.findIndex(r => r.id === tracking_id);
+
+    if (totalVistos >= totalSerieCapitulosGlobal && totalSerieCapitulosGlobal > 0) {
+        nuevoEstado = 'vista';
+        if (idx > -1) miBibliotecaLocal[idx].has_new_episodes = false;
+    } else if (totalVistos > 0) {
+        nuevoEstado = 'viendo';
+    }
+
+    await actualizarEstadoSeguro(tracking_id, nuevoEstado);
     if (idx > -1) {
         miBibliotecaLocal[idx].status = nuevoEstado; miBibliotecaLocal[idx].updated_local = new Date().toISOString();
         miBibliotecaLocal[idx].user_episodes = [...vistosTemporal]; recalcularSiguienteCapitulo(miBibliotecaLocal[idx]); 
