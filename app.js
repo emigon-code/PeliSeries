@@ -473,7 +473,7 @@ function recalcularSiguienteCapitulo(registro) {
     for (const s of validSeasons) {
         let missingEp = 0;
         for (let e = 1; e <= s.episode_count; e++) {
-            if (!watched.some(w => w.season_number === s.season_number && w.episode_number === e)) { 
+            if (!watched.some(w => Number(w.season_number) === Number(s.season_number) && Number(w.episode_number) === Number(e))) { 
                 missingEp = e; 
                 break; 
             }
@@ -553,7 +553,7 @@ async function cargarMiLista() {
         return myListGrid.innerHTML = '<p class="text-gray-400 col-span-full text-center py-8">Aún no has guardado elementos.</p>'; 
     }
 
-    const itemsParaSincronizar = [];
+    const seriesSinTemporadas = [];
 
     miBibliotecaLocal = data.map(registro => {
         const item = registro.items;
@@ -591,15 +591,49 @@ async function cargarMiLista() {
                 registro.has_new_episodes = false;
             }
             recalcularSiguienteCapitulo(registro);
-        }
 
-        const haceSieteDias = new Date(Date.now() - 7 * 24 * 60 * 60 * 1000);
-        const estaCaducado = !item.api_updated_at || new Date(item.api_updated_at) < haceSieteDias;
-        if (estaCaducado || item.rating_imdb === null || item.rating_imdb === undefined || item.rating_tmdb === null || !item.genres || !item.year || item.saga === undefined || (item.type === 'tv' && (!rawSeasons || rawSeasons.length === 0))) {
-            itemsParaSincronizar.push(registro);
+            // Carga prioritaria si está viendo o tiene novedades y falta seasons_data en la DB
+            if ((registro.status === 'viendo' || registro.has_new_episodes) && (!rawSeasons || rawSeasons.length === 0)) {
+                seriesSinTemporadas.push(registro);
+            }
         }
 
         return registro;
+    });
+
+    // Petición previa inmediata para las series activas sin temporadas guardadas
+    if (seriesSinTemporadas.length > 0) {
+        await Promise.all(seriesSinTemporadas.map(async (reg) => {
+            try {
+                const res = await fetch(`https://api.themoviedb.org/3/tv/${reg.items.tmdb_id}?language=es-ES`, { headers: { Authorization: `Bearer ${TMDB_TOKEN}` } });
+                if (!res.ok) return;
+                const tmdbData = await res.json();
+                const seasonsData = tmdbData.seasons || [];
+                
+                reg.details.seasons_data = seasonsData;
+                reg.details.seasons_count = tmdbData.number_of_seasons || 0;
+                reg.details.is_ended = (tmdbData.status === 'Ended' || tmdbData.status === 'Canceled');
+
+                recalcularSiguienteCapitulo(reg);
+
+                await clienteSupabase.from('items').update({
+                    seasons_data: seasonsData
+                }).eq('id', reg.items.id);
+            } catch(e) {}
+        }));
+    }
+
+    const itemsParaSincronizar = [];
+    const haceSieteDias = new Date(Date.now() - 7 * 24 * 60 * 60 * 1000);
+
+    miBibliotecaLocal.forEach(registro => {
+        const item = registro.items;
+        const rawSeasons = registro.details.seasons_data;
+        const estaCaducado = !item.api_updated_at || new Date(item.api_updated_at) < haceSieteDias;
+
+        if (estaCaducado || item.rating_imdb === null || item.rating_imdb === undefined || item.rating_tmdb === null || !item.genres || !item.year || item.saga === undefined || (item.type === 'tv' && (!rawSeasons || rawSeasons.length === 0))) {
+            itemsParaSincronizar.push(registro);
+        }
     });
 
     actualizarOpcionesSelectorGeneros();
@@ -1186,16 +1220,41 @@ async function procesarSerieCompletaBBDD(tracking_id, tmdb_id) {
 
 async function cambiarEstado(selectElement, tracking_id, tmdb_id, tipo, titulo) {
     const nuevoEstado = selectElement.value; selectElement.disabled = true;
-    if (tipo === 'tv') {
-        if (nuevoEstado === 'vista') { await procesarSerieCompletaBBDD(tracking_id, tmdb_id); await cargarMiLista(); return; } 
-        else if (nuevoEstado === 'pendiente') { await clienteSupabase.from('user_episodes').delete().eq('tracking_id', tracking_id); }
-    }
-    await actualizarEstadoSeguro(tracking_id, nuevoEstado);
     const index = miBibliotecaLocal.findIndex(r => r.id === tracking_id);
+
+    if (tipo === 'tv') {
+        if (nuevoEstado === 'vista') { 
+            await procesarSerieCompletaBBDD(tracking_id, tmdb_id); 
+            await cargarMiLista(); 
+            return; 
+        } else if (nuevoEstado === 'pendiente') { 
+            await clienteSupabase.from('user_episodes').delete().eq('tracking_id', tracking_id); 
+        } else if (nuevoEstado === 'viendo') {
+            if (index > -1 && (!miBibliotecaLocal[index].details.seasons_data || miBibliotecaLocal[index].details.seasons_data.length === 0)) {
+                try {
+                    const res = await fetch(`https://api.themoviedb.org/3/tv/${tmdb_id}?language=es-ES`, { headers: { Authorization: `Bearer ${TMDB_TOKEN}` } });
+                    if (res.ok) {
+                        const tmdbData = await res.json();
+                        const seasonsData = tmdbData.seasons || [];
+                        miBibliotecaLocal[index].details.seasons_data = seasonsData;
+                        miBibliotecaLocal[index].details.seasons_count = tmdbData.number_of_seasons || 0;
+                        miBibliotecaLocal[index].details.is_ended = (tmdbData.status === 'Ended' || tmdbData.status === 'Canceled');
+
+                        await clienteSupabase.from('items').update({ seasons_data: seasonsData }).eq('id', miBibliotecaLocal[index].items.id);
+                    }
+                } catch(e) {}
+            }
+        }
+    }
+
+    await actualizarEstadoSeguro(tracking_id, nuevoEstado);
     if(index > -1) {
         miBibliotecaLocal[index].status = nuevoEstado; miBibliotecaLocal[index].updated_local = new Date().toISOString(); 
         miBibliotecaLocal[index].has_new_episodes = false; 
-        if (nuevoEstado === 'pendiente') { miBibliotecaLocal[index].user_episodes = []; recalcularSiguienteCapitulo(miBibliotecaLocal[index]); }
+        if (nuevoEstado === 'pendiente') { 
+            miBibliotecaLocal[index].user_episodes = []; 
+        }
+        recalcularSiguienteCapitulo(miBibliotecaLocal[index]);
     }
     selectElement.disabled = false; aplicarFiltrosYDiseño();
 }
