@@ -1,4 +1,4 @@
-// 1. CREDENCIALES (Sustituye por tus claves reales de TMDB y Supabase)
+// 1. CREDENCIALES
 const TMDB_TOKEN = 'eyJhbGciOiJIUzI1NiJ9.eyJhdWQiOiJmNTIyNzVlMDVhNTAxMjllZWYwMGRhN2Q5ZmU5NTZlZSIsIm5iZiI6MTc5MzU1NjUzNC4wMDcsInN1YiI6IjZhZTc4MDM2MWMyNDI4MTQ4MmM4ZGM2NSIsInNjb3BlcyI6WyJhcGlfcmVhZCJdLCJ2ZXJzaW9uIjoxfQ.b2COQUX-mmBdGPcxwCTUN7HI5EN6KNemlZSzbaD5NuI'; 
 const SUPABASE_URL = 'https://dqqfoucxbsvfdshruygt.supabase.co';
 const SUPABASE_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImRxcWZvdWN4YnN2ZmRzaHJ1eWd0Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3OTM1NDgyOTQsImV4cCI6MjEwOTEyNDI5NH0.Z4yVjtuuSrs3Pc5AghHFVeENOvmIeA8k34iWcVQiqIQ';
@@ -77,6 +77,7 @@ const detailStatus = document.getElementById('detailStatus');
 const detailNextEpisode = document.getElementById('detailNextEpisode');
 const detailOverview = document.getElementById('detailOverview');
 const detailActions = document.getElementById('detailActions');
+const detailBottomActions = document.getElementById('detailBottomActions');
 const detailRecommendations = document.getElementById('detailRecommendations');
 const detailCredits = document.getElementById('detailCredits');
 
@@ -880,6 +881,7 @@ function cerrarModalDetalle() {
     modalDetalle.classList.add('hidden'); currentDetailTrackingId = null; 
     detailSeasonsWrapper.classList.add('hidden'); detailSeasonsContent.innerHTML = '';
     detailNextEpisode.classList.add('hidden');
+    detailBottomActions.classList.add('hidden'); detailBottomActions.innerHTML = '';
 }
 
 async function cargarDatosAvanzados(tmdb_id, tipo) {
@@ -1073,6 +1075,8 @@ async function cargarRecomendaciones(tmdb_id, tipo) {
 async function abrirModalDetalleDesdeBusqueda(tmdb_id) {
     const item = pelisYSeries.find(i => i.id === tmdb_id); if (!item) return;
     modalDetalle.classList.remove('hidden'); miValoracionContenedor.classList.add('hidden'); detailNextEpisode.classList.add('hidden');
+    detailBottomActions.classList.add('hidden'); detailBottomActions.innerHTML = '';
+    detailActions.classList.remove('hidden');
     
     detailTitle.textContent = item.title || item.name;
     
@@ -1165,7 +1169,10 @@ function abrirModalDetalleDesdeLista(tracking_id) {
 
     cargarDatosAvanzados(item.tmdb_id, item.type);
 
-    detailActions.innerHTML = `<button onclick="borrarDeMiLista('${registro.id}', ${item.tmdb_id}, '${item.title.replace(/'/g, "\\'")}')" class="w-full bg-red-950/60 hover:bg-red-600 text-red-400 hover:text-white border border-red-800/60 px-5 py-3 rounded-xl text-sm font-bold transition-colors flex items-center justify-center gap-2">🗑️ Eliminar de mi lista</button>`;
+    detailActions.innerHTML = '';
+    detailActions.classList.add('hidden');
+    detailBottomActions.innerHTML = `<button onclick="borrarDeMiLista('${registro.id}', ${item.tmdb_id}, '${item.title.replace(/'/g, "\\'")}')" class="w-full bg-red-950/60 hover:bg-red-600 text-red-400 hover:text-white border border-red-800/60 px-5 py-3 rounded-xl text-sm font-bold transition-colors flex items-center justify-center gap-2">🗑️ Eliminar de mi lista</button>`;
+    detailBottomActions.classList.remove('hidden');
 
     cargarCreditos(item.tmdb_id, item.type); cargarRecomendaciones(item.tmdb_id, item.type);
     if (item.type === 'tv') renderizarTemporadas(item.tmdb_id, registro.id, item.title);
